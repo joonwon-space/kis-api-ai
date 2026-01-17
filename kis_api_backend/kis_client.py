@@ -1,4 +1,4 @@
-import requests
+import httpx
 import json
 from typing import Dict, Any
 
@@ -38,10 +38,11 @@ class KISClient:
         }
         url = f"{self.base_url}/oauth2/tokenP"
         try:
-            response = requests.post(url, headers=headers, data=json.dumps(body))
-            response.raise_for_status()
-            self.access_token = response.json()["access_token"]
-        except requests.exceptions.RequestException as e:
+            with httpx.Client() as client:
+                response = client.post(url, headers=headers, content=json.dumps(body))
+                response.raise_for_status()
+                self.access_token = response.json()["access_token"]
+        except httpx.HTTPError as e:
             raise Exception(f"Failed to get access token: {e}")
 
     def get_balance(self) -> Dict[str, Any]:
@@ -78,9 +79,10 @@ class KISClient:
         }
         url = f"{self.base_url}/uapi/domestic-stock/v1/trading/inquire-balance"
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
 
             # The actual parsing logic will depend on the exact structure of the KIS API response.
             # This is a placeholder based on the user's request.
@@ -105,7 +107,7 @@ class KISClient:
                 "holdings": holdings,
             }
 
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             # If the token is expired, the API might return a specific error code.
             # Here we can check for that and try to refresh the token.
             # For now, we'll just raise a generic exception.
