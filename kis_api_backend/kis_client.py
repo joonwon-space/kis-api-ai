@@ -209,3 +209,83 @@ class KISClient:
             raise Exception(f"Failed to get overseas holdings: {e}\nResponse: {error_detail}")
         except httpx.HTTPError as e:
             raise Exception(f"Failed to get overseas holdings: {e}")
+
+    def get_domestic_stock_price(self, stock_code: str) -> Dict[str, Any]:
+        """
+        국내 주식 현재가 조회
+
+        Args:
+            stock_code (str): 종목코드 (6자리)
+
+        Returns:
+            Dict[str, Any]: KIS API 원본 응답
+        """
+        access_token = self.token_manager.get_valid_token()
+
+        tr_id = "FHKST01010100"  # 실전/모의 동일
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "appkey": self.app_key,
+            "appsecret": self.app_secret,
+            "tr_id": tr_id,
+            "custtype": "P"
+        }
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "J",  # J:주식
+            "FID_INPUT_ISCD": stock_code
+        }
+        url = f"{self.base_url}/uapi/domestic-stock/v1/quotations/inquire-price"
+
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text if hasattr(e.response, 'text') else str(e)
+            raise Exception(f"Failed to get domestic stock price: {e}\nResponse: {error_detail}")
+        except httpx.HTTPError as e:
+            raise Exception(f"Failed to get domestic stock price: {e}")
+
+    def get_overseas_stock_price(self, symbol: str, exchange_code: str = "NAS") -> Dict[str, Any]:
+        """
+        해외 주식 현재가 조회
+
+        Args:
+            symbol (str): 심볼 (예: AAPL)
+            exchange_code (str): 거래소 코드 (NAS:나스닥, NYS:뉴욕, AMS:아멕스)
+
+        Returns:
+            Dict[str, Any]: KIS API 원본 응답
+        """
+        access_token = self.token_manager.get_valid_token()
+
+        tr_id = "HHDFS00000300"  # 실전/모의 동일
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "appkey": self.app_key,
+            "appsecret": self.app_secret,
+            "tr_id": tr_id,
+            "custtype": "P"
+        }
+        params = {
+            "AUTH": "",
+            "EXCD": exchange_code,
+            "SYMB": symbol
+        }
+        url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price"
+
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text if hasattr(e.response, 'text') else str(e)
+            raise Exception(f"Failed to get overseas stock price: {e}\nResponse: {error_detail}")
+        except httpx.HTTPError as e:
+            raise Exception(f"Failed to get overseas stock price: {e}")
