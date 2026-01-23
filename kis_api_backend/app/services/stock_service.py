@@ -71,31 +71,36 @@ class StockService:
         code = stock["code"]
         data = self.kis_client.get_domestic_stock_price(code)
 
-        # 디버깅: KIS API 응답 로깅
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"KIS API Response for {code}: {data}")
-
         # KIS API 응답 파싱
         output = data.get("output", {})
 
-        # 종목명 가져오기 (KIS API 응답에서 - 여러 필드 시도)
-        stock_name = (
-            output.get("hts_kor_isnm") or  # HTS 한글 종목명
-            output.get("prdt_name") or      # 상품명
-            output.get("prdt_abrv_name") or # 상품약어명
-            output.get("std_pdno_abbr") or  # 표준종목약어
-            stock.get("name", code)
-        )
+        # KIS API 응답에는 종목명이 없음!
+        # 종목명이 종목코드와 같으면 (직접 조회한 경우) 네이버 API로 종목명 가져오기
+        stock_name = stock.get("name", code)
 
-        # 종목명이 종목코드와 같으면 (직접 조회한 경우) KIS API에서 가져온 이름 사용
-        if stock.get("name") == code and stock_name != code:
-            # 캐시에도 추가
+        if stock_name == code:
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"Updating stock name in cache: {code} -> {stock_name}")
-            from app.services.stock_master_service import stock_master_service
-            stock_master_service._index_domestic_stock({"code": code, "name": stock_name})
+            logger.info(f"Stock name not in cache, fetching from Naver for code: {code}")
+
+            try:
+                # 종목코드로 네이버 API 검색
+                from app.services.stock_master_service import stock_master_service
+                results = stock_master_service._fetch_from_naver(code)
+
+                if results and len(results) > 0:
+                    # 정확히 일치하는 종목코드 찾기
+                    for result in results:
+                        if result.get("code") == code:
+                            stock_name = result.get("name", code)
+                            logger.info(f"Found stock name from Naver: {code} -> {stock_name}")
+                            # 캐시에 저장
+                            stock_master_service._index_domestic_stock({"code": code, "name": stock_name})
+                            break
+            except Exception as e:
+                logger.warning(f"Failed to fetch stock name from Naver: {e}")
+                # 종목명을 가져오지 못해도 종목코드로라도 표시
+                stock_name = code
 
         # 전일대비 부호 (1:상한, 2:상승, 3:보합, 4:하한, 5:하락)
         sign = output.get("prdy_vrss_sign", "3")
