@@ -71,12 +71,22 @@ class StockService:
         code = stock["code"]
         data = self.kis_client.get_domestic_stock_price(code)
 
+        # 디버깅: KIS API 응답 로깅
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"KIS API Response for {code}: {data}")
+
         # KIS API 응답 파싱
         output = data.get("output", {})
 
-        # 종목명 가져오기 (KIS API 응답에서)
-        # hts_kor_isnm: HTS 한글 종목명
-        stock_name = output.get("hts_kor_isnm", stock.get("name", code))
+        # 종목명 가져오기 (KIS API 응답에서 - 여러 필드 시도)
+        stock_name = (
+            output.get("hts_kor_isnm") or  # HTS 한글 종목명
+            output.get("prdt_name") or      # 상품명
+            output.get("prdt_abrv_name") or # 상품약어명
+            output.get("std_pdno_abbr") or  # 표준종목약어
+            stock.get("name", code)
+        )
 
         # 종목명이 종목코드와 같으면 (직접 조회한 경우) KIS API에서 가져온 이름 사용
         if stock.get("name") == code and stock_name != code:
