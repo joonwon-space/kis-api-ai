@@ -3,6 +3,18 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
 # Environments
 .env
 .venv
@@ -12,6 +24,17 @@ ENV/
 env.bak/
 venv.bak/
 
+# KIS API tokens
+token.json
+*.token
+
 # IDEs
 .idea/
 .vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

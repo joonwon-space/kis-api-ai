@@ -1,10 +1,19 @@
 import httpx
-import json
 from typing import Dict, Any
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import from app
+sys.path.append(str(Path(__file__).parent))
+
+from app.services.token_manager import TokenManager
+
 
 class KISClient:
     """
     Client for interacting with the Korea Investment & Securities (KIS) Open API.
+
+    Uses TokenManager to efficiently manage access tokens with caching and automatic renewal.
     """
 
     def __init__(self, app_key: str, app_secret: str, account_no: str, acnt_prdt_cd: str, is_simulation: bool = True):
@@ -24,26 +33,13 @@ class KISClient:
         self.acnt_prdt_cd = acnt_prdt_cd
         self.is_simulation = is_simulation
         self.base_url = "https://openapivts.koreainvestment.com:29443" if is_simulation else "https://openapi.koreainvestment.com:9443"
-        self.access_token = None
 
-    def _get_access_token(self) -> None:
-        """
-        Retrieves an access token from the KIS API.
-        """
-        headers = {"content-type": "application/json"}
-        body = {
-            "grant_type": "client_credentials",
-            "appkey": self.app_key,
-            "appsecret": self.app_secret,
-        }
-        url = f"{self.base_url}/oauth2/tokenP"
-        try:
-            with httpx.Client() as client:
-                response = client.post(url, headers=headers, content=json.dumps(body))
-                response.raise_for_status()
-                self.access_token = response.json()["access_token"]
-        except httpx.HTTPError as e:
-            raise Exception(f"Failed to get access token: {e}")
+        # Initialize TokenManager for efficient token management
+        self.token_manager = TokenManager(
+            app_key=app_key,
+            app_secret=app_secret,
+            base_url=self.base_url
+        )
 
     def get_balance(self) -> Dict[str, Any]:
         """
@@ -52,13 +48,13 @@ class KISClient:
         Returns:
             Dict[str, Any]: A dictionary containing total asset value, deposit, profit/loss, and holdings.
         """
-        if not self.access_token:
-            self._get_access_token()
+        # Get valid token (automatically renewed if expired)
+        access_token = self.token_manager.get_valid_token()
 
         tr_id = "VTTC8434R" if self.is_simulation else "TTTC8434R"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.access_token}",
+            "Authorization": f"Bearer {access_token}",
             "appkey": self.app_key,
             "appsecret": self.app_secret,
             "tr_id": tr_id,
@@ -84,11 +80,23 @@ class KISClient:
                 response.raise_for_status()
                 data = response.json()
 
+            # Log the raw response for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"KIS API Response: {data}")
+
             # The actual parsing logic will depend on the exact structure of the KIS API response.
             # This is a placeholder based on the user's request.
-            total_asset = data.get("output2", [{}])[0].get("asst_icdc_amt")
-            deposit = data.get("output2", [{}])[0].get("dnca_tot_amt")
-            profit_loss = data.get("output2", [{}])[0].get("evlu_pfls_amt")
+            output2 = data.get("output2", [])
+            if isinstance(output2, list) and len(output2) > 0:
+                total_asset = output2[0].get("asst_icdc_amt")
+                deposit = output2[0].get("dnca_tot_amt")
+                profit_loss = output2[0].get("evlu_pfls_amt")
+            else:
+                # output2 might be a dict instead of list
+                total_asset = output2.get("asst_icdc_amt") if isinstance(output2, dict) else None
+                deposit = output2.get("dnca_tot_amt") if isinstance(output2, dict) else None
+                profit_loss = output2.get("evlu_pfls_amt") if isinstance(output2, dict) else None
             
             holdings = []
             if "output1" in data and data["output1"]:
@@ -107,8 +115,9 @@ class KISClient:
                 "holdings": holdings,
             }
 
+        except httpx.HTTPStatusError as e:
+            # Log the response body for debugging
+            error_detail = e.response.text if hasattr(e.response, 'text') else str(e)
+            raise Exception(f"Failed to get balance: {e}\nResponse: {error_detail}")
         except httpx.HTTPError as e:
-            # If the token is expired, the API might return a specific error code.
-            # Here we can check for that and try to refresh the token.
-            # For now, we'll just raise a generic exception.
             raise Exception(f"Failed to get balance: {e}")
