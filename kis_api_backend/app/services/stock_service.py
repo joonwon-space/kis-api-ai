@@ -74,6 +74,19 @@ class StockService:
         # KIS API 응답 파싱
         output = data.get("output", {})
 
+        # 종목명 가져오기 (KIS API 응답에서)
+        # hts_kor_isnm: HTS 한글 종목명
+        stock_name = output.get("hts_kor_isnm", stock.get("name", code))
+
+        # 종목명이 종목코드와 같으면 (직접 조회한 경우) KIS API에서 가져온 이름 사용
+        if stock.get("name") == code and stock_name != code:
+            # 캐시에도 추가
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Updating stock name in cache: {code} -> {stock_name}")
+            from app.services.stock_master_service import stock_master_service
+            stock_master_service._index_domestic_stock({"code": code, "name": stock_name})
+
         # 전일대비 부호 (1:상한, 2:상승, 3:보합, 4:하한, 5:하락)
         sign = output.get("prdy_vrss_sign", "3")
         if sign in ["1", "2"]:
@@ -86,7 +99,7 @@ class StockService:
         return StockQuote(
             market="DOMESTIC",
             symbol=code,
-            name=stock["name"],
+            name=stock_name,
             current_price=output.get("stck_prpr", "0"),
             change=output.get("prdy_vrss", "0"),
             change_rate=output.get("prdy_ctrt", "0"),
