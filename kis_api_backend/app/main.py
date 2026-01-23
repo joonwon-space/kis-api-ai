@@ -8,7 +8,7 @@ from app.services.stock_master_service import stock_master_service
 async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 처리"""
     # Startup
-    await stock_master_service.initialize()
+    stock_master_service.initialize()
     yield
     # Shutdown
     # 필요한 정리 작업

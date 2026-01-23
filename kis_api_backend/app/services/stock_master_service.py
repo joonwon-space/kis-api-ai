@@ -29,7 +29,7 @@ class StockMasterService:
         }
         self._initialized = False
 
-    async def initialize(self):
+    def initialize(self):
         """
         종목 데이터 초기화
 
@@ -43,7 +43,7 @@ class StockMasterService:
             logger.info("Initializing stock master data...")
 
             # 국내 주식 데이터 로드
-            await self._load_domestic_stocks()
+            self._load_domestic_stocks()
 
             # 해외 주식 데이터 로드 (기본 주요 종목만)
             self._load_overseas_stocks()
@@ -59,7 +59,7 @@ class StockMasterService:
             # 초기화 실패 시에도 기본 데이터로 동작 가능하도록
             self._load_fallback_data()
 
-    async def _load_domestic_stocks(self):
+    def _load_domestic_stocks(self):
         """
         국내 주식 데이터 로드
 
@@ -75,14 +75,14 @@ class StockMasterService:
 
         for keyword in major_stocks:
             try:
-                result = await self._fetch_from_naver(keyword)
+                result = self._fetch_from_naver(keyword)
                 if result:
                     self._index_domestic_stock(result[0])  # 첫 번째 결과 사용
             except Exception as e:
                 logger.warning(f"Failed to fetch {keyword}: {e}")
                 continue
 
-    async def _fetch_from_naver(self, keyword: str) -> List[Dict]:
+    def _fetch_from_naver(self, keyword: str) -> List[Dict]:
         """
         네이버 금융 API로 종목 검색
 
@@ -102,8 +102,8 @@ class StockMasterService:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, params=params, timeout=5.0)
+            with httpx.Client() as client:
+                response = client.get(url, params=params, timeout=5.0)
                 response.raise_for_status()
                 data = response.json()
 
