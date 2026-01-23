@@ -33,12 +33,26 @@ class StockService:
         Raises:
             ValueError: 종목을 찾을 수 없는 경우
         """
-        # 1. 종목 검색
+        # 1. 종목 검색 (캐시)
         stock = self.master_service.search(keyword)
+
+        # 2. 캐시에 없으면 종목코드인지 확인 (6자리 숫자)
+        if not stock and keyword.isdigit() and len(keyword) == 6:
+            # 종목코드로 직접 조회 (캐시 없이)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Direct query for stock code: {keyword}")
+            stock = {
+                "market": "DOMESTIC",
+                "code": keyword,
+                "name": keyword  # 종목명은 응답에서 가져올 수 있으면 업데이트
+            }
+
+        # 3. 여전히 못 찾으면 에러
         if not stock:
             raise ValueError(f"종목을 찾을 수 없습니다: {keyword}")
 
-        # 2. 시세 조회
+        # 4. 시세 조회
         if stock["market"] == "DOMESTIC":
             return self._get_domestic_quote(stock)
         else:
