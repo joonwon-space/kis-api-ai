@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import sys
 from pathlib import Path
 
@@ -7,6 +7,9 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from kis_client import KISClient
 from app.config import settings
+from app.schemas.holdings import HoldingsResponse
+from app.schemas.common import MarketType
+from app.services.account_service import AccountService
 
 router = APIRouter()
 
@@ -76,3 +79,37 @@ def get_balance_raw():
             return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch raw balance: {str(e)}")
+
+
+@router.get("/holdings", response_model=HoldingsResponse)
+def get_holdings(
+    market_type: MarketType = Query(
+        default=MarketType.ALL,
+        description="시장 구분 (ALL: 전체, DOMESTIC: 국내, OVERSEAS: 해외)"
+    )
+):
+    """
+    보유 종목 상세 조회
+
+    국내 및 해외 주식의 보유 현황을 종목별로 상세하게 조회합니다.
+
+    Args:
+        market_type: 시장 구분
+            - ALL: 국내 + 해외 전체
+            - DOMESTIC: 국내 주식만
+            - OVERSEAS: 해외 주식만
+
+    Returns:
+        HoldingsResponse: 보유 종목 상세 정보
+            - market_type: 조회한 시장 구분
+            - summary: 요약 정보 (총 평가금액, 손익 등)
+            - holdings: 종목별 상세 리스트
+    """
+    try:
+        account_service = AccountService(kis_client)
+        return account_service.get_holdings(market_type)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch holdings: {str(e)}"
+        )

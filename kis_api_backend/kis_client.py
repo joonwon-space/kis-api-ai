@@ -121,3 +121,91 @@ class KISClient:
             raise Exception(f"Failed to get balance: {e}\nResponse: {error_detail}")
         except httpx.HTTPError as e:
             raise Exception(f"Failed to get balance: {e}")
+
+    def get_domestic_holdings(self) -> Dict[str, Any]:
+        """
+        국내 주식 보유 내역 상세 조회
+
+        Returns:
+            Dict[str, Any]: KIS API 원본 응답 (output1: 보유 종목, output2: 계좌 요약)
+        """
+        access_token = self.token_manager.get_valid_token()
+
+        tr_id = "VTTC8434R" if self.is_simulation else "TTTC8434R"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "appkey": self.app_key,
+            "appsecret": self.app_secret,
+            "tr_id": tr_id,
+            "custtype": "P"
+        }
+        params = {
+            "CANO": self.account_no,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "AFHR_FLPR_YN": "N",
+            "OFL_YN": "",
+            "INQR_DVSN": "02",  # 종목별 조회
+            "UNPR_DVSN": "01",
+            "FUND_STTL_ICLD_YN": "N",
+            "FNCG_AMT_AUTO_RDPT_YN": "N",
+            "PRCS_DVSN": "00",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": ""
+        }
+        url = f"{self.base_url}/uapi/domestic-stock/v1/trading/inquire-balance"
+
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text if hasattr(e.response, 'text') else str(e)
+            raise Exception(f"Failed to get domestic holdings: {e}\nResponse: {error_detail}")
+        except httpx.HTTPError as e:
+            raise Exception(f"Failed to get domestic holdings: {e}")
+
+    def get_overseas_holdings(self, exchange_code: str = "NASD") -> Dict[str, Any]:
+        """
+        해외 주식 보유 내역 조회
+
+        Args:
+            exchange_code (str): 거래소 코드 (NASD: 나스닥, NYSE: 뉴욕, AMEX: 아멕스)
+
+        Returns:
+            Dict[str, Any]: KIS API 원본 응답
+        """
+        access_token = self.token_manager.get_valid_token()
+
+        tr_id = "JTTT3012R" if self.is_simulation else "TTTS3012R"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "appkey": self.app_key,
+            "appsecret": self.app_secret,
+            "tr_id": tr_id,
+            "custtype": "P"
+        }
+        params = {
+            "CANO": self.account_no,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange_code,
+            "TR_CRCY_CD": "USD",
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
+        }
+        url = f"{self.base_url}/uapi/overseas-stock/v1/trading/inquire-balance"
+
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text if hasattr(e.response, 'text') else str(e)
+            raise Exception(f"Failed to get overseas holdings: {e}\nResponse: {error_detail}")
+        except httpx.HTTPError as e:
+            raise Exception(f"Failed to get overseas holdings: {e}")
