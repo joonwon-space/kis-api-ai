@@ -226,6 +226,8 @@ class StockMasterService:
         """
         종목 검색
 
+        캐시에 없으면 실시간으로 네이버 API를 호출합니다.
+
         Args:
             keyword: 검색 키워드 (종목명 또는 코드/심볼)
 
@@ -260,6 +262,19 @@ class StockMasterService:
         if keyword_upper in self.cache["overseas"]["by_name"]:
             symbol = self.cache["overseas"]["by_name"][keyword_upper]
             return self.cache["overseas"]["by_symbol"][symbol]
+
+        # 5. 캐시에 없으면 실시간으로 네이버 API 호출 (국내 주식)
+        logger.info(f"Stock not in cache, fetching from Naver: {keyword}")
+        try:
+            results = self._fetch_from_naver(keyword)
+            if results:
+                # 첫 번째 결과를 캐시에 추가하고 반환
+                stock = results[0]
+                self._index_domestic_stock(stock)
+                logger.info(f"Found and cached: {stock['name']} ({stock['code']})")
+                return self.cache["domestic"]["by_code"][stock["code"]]
+        except Exception as e:
+            logger.warning(f"Failed to fetch from Naver in real-time: {e}")
 
         return None
 
