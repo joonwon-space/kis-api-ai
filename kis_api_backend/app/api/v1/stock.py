@@ -23,6 +23,26 @@ kis_client = KISClient(
 )
 
 
+@router.get("/debug/{stock_code}")
+def debug_stock_response(stock_code: str):
+    """
+    디버그: KIS API 원본 응답 확인
+
+    종목코드의 KIS API 원본 응답을 그대로 반환합니다.
+
+    Args:
+        stock_code: 종목코드 (6자리)
+
+    Returns:
+        dict: KIS API 원본 응답
+    """
+    try:
+        data = kis_client.get_domestic_stock_price(stock_code)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/quote", response_model=StockQuote)
 def get_stock_quote(
     keyword: str = Query(
