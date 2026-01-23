@@ -3,6 +3,8 @@ import httpx
 import logging
 from typing import Dict, Optional, List
 from datetime import datetime
+import zipfile
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -63,64 +65,121 @@ class StockMasterService:
         """
         국내 주식 데이터 로드
 
-        먼저 기본 종목을 로드하고, 네이버 API로 추가 데이터를 시도합니다.
+        KIS에서 제공하는 종목 마스터 파일(KOSPI, KOSDAQ)을 다운로드하여 로드합니다.
+        실패 시 기본 종목 데이터를 사용합니다.
         """
-        # 1. 기본 종목 데이터 먼저 로드 (필수)
-        fallback_domestic = [
-            # 대형주
-            {"code": "005930", "name": "삼성전자"},
-            {"code": "000660", "name": "SK하이닉스"},
-            {"code": "035420", "name": "NAVER"},
-            {"code": "035720", "name": "카카오"},
-            {"code": "207940", "name": "삼성바이오로직스"},
-            {"code": "005380", "name": "현대차"},
-            {"code": "000270", "name": "기아"},
-            {"code": "373220", "name": "LG에너지솔루션"},
-            {"code": "068270", "name": "셀트리온"},
-            {"code": "005490", "name": "POSCO홀딩스"},
-            # 금융
-            {"code": "105560", "name": "KB금융"},
-            {"code": "055550", "name": "신한지주"},
-            {"code": "086790", "name": "하나금융지주"},
-            {"code": "323410", "name": "카카오뱅크"},
-            {"code": "003540", "name": "대신증권"},
-            # IT/게임
-            {"code": "259960", "name": "크래프톤"},
-            {"code": "036570", "name": "엔씨소프트"},
-            {"code": "251270", "name": "넷마블"},
-            {"code": "352820", "name": "하이브"},
-            # 화학/소재
-            {"code": "051910", "name": "LG화학"},
-            {"code": "006400", "name": "삼성SDI"},
-            {"code": "009830", "name": "한화솔루션"},
-            # 자동차/부품
-            {"code": "012330", "name": "현대모비스"},
-            {"code": "161390", "name": "한국타이어앤테크놀로지"},
-            # 바이오/제약
-            {"code": "326030", "name": "SK바이오팜"},
-            {"code": "128940", "name": "한미약품"},
-            # 전자/반도체
-            {"code": "066570", "name": "LG전자"},
-            {"code": "009150", "name": "삼성전기"},
-            # 기타
-            {"code": "028260", "name": "삼성물산"},
-            {"code": "032830", "name": "삼성생명"}
-        ]
+        try:
+            # 1. KIS 마스터 파일에서 데이터 로드 시도
+            logger.info("Downloading stock master data from KIS...")
 
-        for stock in fallback_domestic:
-            self._index_domestic_stock(stock)
+            # KOSPI 종목 로드
+            kospi_stocks = self._download_kis_master_file(
+                "https://new.real.download.dws.co.kr/common/master/kospi_code.mst.zip"
+            )
+            for stock in kospi_stocks:
+                self._index_domestic_stock(stock)
 
-        logger.info(f"Loaded {len(fallback_domestic)} domestic stocks from fallback data")
+            # KOSDAQ 종목 로드
+            kosdaq_stocks = self._download_kis_master_file(
+                "https://new.real.download.dws.co.kr/common/master/kosdaq_code.mst.zip"
+            )
+            for stock in kosdaq_stocks:
+                self._index_domestic_stock(stock)
 
-        # 2. 네이버 API로 추가 데이터 로드 시도 (선택적)
-        # 현재는 네트워크 문제로 비활성화
-        # try:
-        #     for keyword in ["삼성전자", "SK하이닉스"]:  # 샘플
-        #         result = self._fetch_from_naver(keyword)
-        #         if result:
-        #             self._index_domestic_stock(result[0])
-        # except Exception as e:
-        #     logger.warning(f"Failed to fetch additional data from Naver: {e}")
+            logger.info(f"Loaded {len(kospi_stocks)} KOSPI + {len(kosdaq_stocks)} KOSDAQ stocks from KIS")
+
+        except Exception as e:
+            logger.warning(f"Failed to load KIS master data: {e}, using fallback data")
+            # 2. KIS 마스터 파일 로드 실패 시 기본 종목 데이터 사용
+            fallback_domestic = [
+                # 대형주
+                {"code": "005930", "name": "삼성전자"},
+                {"code": "000660", "name": "SK하이닉스"},
+                {"code": "035420", "name": "NAVER"},
+                {"code": "035720", "name": "카카오"},
+                {"code": "207940", "name": "삼성바이오로직스"},
+                {"code": "005380", "name": "현대차"},
+                {"code": "000270", "name": "기아"},
+                {"code": "373220", "name": "LG에너지솔루션"},
+                {"code": "068270", "name": "셀트리온"},
+                {"code": "005490", "name": "POSCO홀딩스"},
+                # 금융
+                {"code": "105560", "name": "KB금융"},
+                {"code": "055550", "name": "신한지주"},
+                {"code": "086790", "name": "하나금융지주"},
+                {"code": "323410", "name": "카카오뱅크"},
+                {"code": "003540", "name": "대신증권"},
+                # IT/게임
+                {"code": "259960", "name": "크래프톤"},
+                {"code": "036570", "name": "엔씨소프트"},
+                {"code": "251270", "name": "넷마블"},
+                {"code": "352820", "name": "하이브"},
+                # 화학/소재
+                {"code": "051910", "name": "LG화학"},
+                {"code": "006400", "name": "삼성SDI"},
+                {"code": "009830", "name": "한화솔루션"},
+                # 자동차/부품
+                {"code": "012330", "name": "현대모비스"},
+                {"code": "161390", "name": "한국타이어앤테크놀로지"},
+                # 바이오/제약
+                {"code": "326030", "name": "SK바이오팜"},
+                {"code": "128940", "name": "한미약품"},
+                # 전자/반도체
+                {"code": "066570", "name": "LG전자"},
+                {"code": "009150", "name": "삼성전기"},
+                # 기타
+                {"code": "028260", "name": "삼성물산"},
+                {"code": "032830", "name": "삼성생명"}
+            ]
+
+            for stock in fallback_domestic:
+                self._index_domestic_stock(stock)
+
+            logger.info(f"Loaded {len(fallback_domestic)} domestic stocks from fallback data")
+
+    def _download_kis_master_file(self, url: str) -> List[Dict]:
+        """
+        KIS 종목 마스터 파일 다운로드 및 파싱
+
+        Args:
+            url: 마스터 파일 다운로드 URL (예: kospi_code.mst.zip)
+
+        Returns:
+            List[Dict]: 종목 리스트 [{"code": "005930", "name": "삼성전자"}, ...]
+        """
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, timeout=10.0)
+                response.raise_for_status()
+
+                # ZIP 파일 압축 해제
+                with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+                    # ZIP 안의 첫 번째 파일 읽기 (*.mst 파일)
+                    file_name = zip_file.namelist()[0]
+                    with zip_file.open(file_name) as f:
+                        content = f.read().decode('cp949')
+
+                # 파일 파싱
+                stocks = []
+                for line in content.strip().split('\n'):
+                    if len(line) < 21:
+                        continue
+
+                    # 종목코드와 종목명 추출
+                    # 형식: 종목코드(9자리) + 표준코드(12자리) + 종목명
+                    rf1 = line[0:len(line) - 222] if len(line) > 222 else line
+                    code = rf1[0:9].rstrip()
+                    name = rf1[21:].strip()
+
+                    # 종목코드가 6자리 숫자인 경우만 (정규 주식)
+                    if code.isdigit() and len(code) == 6:
+                        stocks.append({"code": code, "name": name})
+
+                return stocks
+
+        except Exception as e:
+            logger.error(f"Failed to download KIS master file from {url}: {e}")
+            return []
 
     def _fetch_from_naver(self, keyword: str) -> List[Dict]:
         """
@@ -170,7 +229,15 @@ class StockMasterService:
             stock: 종목 정보 {"code": "005930", "name": "삼성전자"}
         """
         code = stock["code"]
-        name = stock["name"]
+        raw_name = stock["name"]
+
+        # 종목명 정제: 공백 제거, ST100 등 접미사 제거
+        name = raw_name.strip()
+        # ST100, ST50 등의 접미사 제거
+        for suffix in ["ST100", "ST50", "ST"]:
+            if name.endswith(suffix):
+                name = name[:-len(suffix)].strip()
+                break
 
         self.cache["domestic"]["by_code"][code] = {
             "code": code,
@@ -244,7 +311,7 @@ class StockMasterService:
         """
         종목 검색
 
-        캐시에 없으면 실시간으로 네이버 API를 호출합니다.
+        캐시에서 종목을 검색합니다.
 
         Args:
             keyword: 검색 키워드 (종목명 또는 코드/심볼)
@@ -280,19 +347,6 @@ class StockMasterService:
         if keyword_upper in self.cache["overseas"]["by_name"]:
             symbol = self.cache["overseas"]["by_name"][keyword_upper]
             return self.cache["overseas"]["by_symbol"][symbol]
-
-        # 5. 캐시에 없으면 실시간으로 네이버 API 호출 (국내 주식)
-        logger.info(f"Stock not in cache, fetching from Naver: {keyword}")
-        try:
-            results = self._fetch_from_naver(keyword)
-            if results:
-                # 첫 번째 결과를 캐시에 추가하고 반환
-                stock = results[0]
-                self._index_domestic_stock(stock)
-                logger.info(f"Found and cached: {stock['name']} ({stock['code']})")
-                return self.cache["domestic"]["by_code"][stock["code"]]
-        except Exception as e:
-            logger.warning(f"Failed to fetch from Naver in real-time: {e}")
 
         return None
 
