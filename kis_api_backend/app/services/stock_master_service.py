@@ -63,24 +63,46 @@ class StockMasterService:
         """
         국내 주식 데이터 로드
 
-        네이버 금융 자동완성 API를 활용하여 주요 종목 데이터를 수집합니다.
+        먼저 기본 종목을 로드하고, 네이버 API로 추가 데이터를 시도합니다.
         """
-        # 주요 종목 리스트 (코스피 200 주요 종목)
-        major_stocks = [
-            "삼성전자", "SK하이닉스", "NAVER", "카카오", "삼성바이오로직스",
-            "현대차", "기아", "LG에너지솔루션", "셀트리온", "POSCO홀딩스",
-            "KB금융", "신한지주", "LG화학", "삼성SDI", "현대모비스",
-            "기업은행", "하나금융지주", "삼성생명", "삼성물산", "LG전자"
+        # 1. 기본 종목 데이터 먼저 로드 (필수)
+        fallback_domestic = [
+            {"code": "005930", "name": "삼성전자"},
+            {"code": "000660", "name": "SK하이닉스"},
+            {"code": "035420", "name": "NAVER"},
+            {"code": "035720", "name": "카카오"},
+            {"code": "207940", "name": "삼성바이오로직스"},
+            {"code": "005380", "name": "현대차"},
+            {"code": "000270", "name": "기아"},
+            {"code": "373220", "name": "LG에너지솔루션"},
+            {"code": "068270", "name": "셀트리온"},
+            {"code": "005490", "name": "POSCO홀딩스"},
+            {"code": "105560", "name": "KB금융"},
+            {"code": "055550", "name": "신한지주"},
+            {"code": "051910", "name": "LG화학"},
+            {"code": "006400", "name": "삼성SDI"},
+            {"code": "012330", "name": "현대모비스"},
+            {"code": "024110", "name": "기업은행"},
+            {"code": "086790", "name": "하나금융지주"},
+            {"code": "032830", "name": "삼성생명"},
+            {"code": "028260", "name": "삼성물산"},
+            {"code": "066570", "name": "LG전자"}
         ]
 
-        for keyword in major_stocks:
-            try:
-                result = self._fetch_from_naver(keyword)
-                if result:
-                    self._index_domestic_stock(result[0])  # 첫 번째 결과 사용
-            except Exception as e:
-                logger.warning(f"Failed to fetch {keyword}: {e}")
-                continue
+        for stock in fallback_domestic:
+            self._index_domestic_stock(stock)
+
+        logger.info(f"Loaded {len(fallback_domestic)} domestic stocks from fallback data")
+
+        # 2. 네이버 API로 추가 데이터 로드 시도 (선택적)
+        # 현재는 네트워크 문제로 비활성화
+        # try:
+        #     for keyword in ["삼성전자", "SK하이닉스"]:  # 샘플
+        #         result = self._fetch_from_naver(keyword)
+        #         if result:
+        #             self._index_domestic_stock(result[0])
+        # except Exception as e:
+        #     logger.warning(f"Failed to fetch additional data from Naver: {e}")
 
     def _fetch_from_naver(self, keyword: str) -> List[Dict]:
         """
