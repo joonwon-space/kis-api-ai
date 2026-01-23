@@ -1,271 +1,348 @@
-# Claude AI 개발 가이드
+# CLAUDE.md
 
-이 문서는 Claude AI를 사용하여 프로젝트를 개발할 때 따라야 할 워크플로우와 규칙을 정의합니다.
+This file provides guidance to **Claude Code** (Anthropic's CLI Agent) when working with code in this repository.
 
-## Git 워크플로우
+## 🚨 0. PRIMARY WORKFLOW (MANDATORY)
 
-### 1. 이슈 기반 개발
+**Claude Code must follow this "Devlog + Git Flow" hybrid workflow for EVERY non-trivial task.**
 
-모든 작업은 GitHub Issue를 기반으로 진행합니다.
+### Phase 1: Analyze & Plan (Devlog)
+1.  **Fetch Issue:** Use `gh issue view {issue_number}` to understand requirements.
+2.  **Check/Create Devlog:**
+    - Directory: `docs/devlog/`
+    - Filename: `YYYY-MM-DD-NN-task-name.md` (e.g., `2026-01-23-01-auth-feature.md`)
+    - Content: Objective, Requirements Analysis, Step-by-Step Plan, Testing Strategy.
+3.  **User Approval:** **WAIT** for the user to approve the plan in the devlog before writing code.
+
+### Phase 2: Branch & Execute (Git Flow)
+1.  **Create Branch:** `git checkout -b feature/issue-{number}-{description}`.
+2.  **Implement:** Write code according to the Devlog plan.
+3.  **Verify:** Run tests (`pytest`) and check `git diff` to ensure quality.
+
+### Phase 3: Commit & PR
+1.  **Commit:** Use Conventional Commits (See below).
+2.  **Push:** `git push -u origin feature/...`
+3.  **Create PR:** Use `gh pr create` with the detailed template provided below.
+4.  **Wait for Review:** Notify the user and wait for the merge command.
+
+---
+
+# 📘 Claude Code Development Guide
+
+## 🏗 Project Context
+
+### Project Overview
+- **Goal:** Build a Python FastAPI Backend for **Korea Investment & Securities (KIS) Stock Trading**.
+- **Developer & Client:** This system is built and primarily used by **Claude Code (AI Agent)**.
+- **External System:** KIS Open API (RESTful).
+
+### Architecture (Clean Architecture)
+- **app/api/** – Routers (Endpoints)
+  - `endpoints/`: Route definitions (e.g., `auth.py`, `balance.py`, `order.py`).
+- **app/services/** – Business Logic
+  - Orchestrates calls between API adapter and data processing.
+- **app/clients/** – External API Adapters
+  - `kis_client.py`: Wrapper for KIS Open API. **Isolate all KIS-specific logic here.**
+- **app/schemas/** – Pydantic Models (DTOs)
+  - Strict typing for JSON data exchange.
+- **app/core/** – Configuration (`.env`) & Security.
+
+### Key Constraints
+1.  **Token Caching:** KIS Access Token **MUST** be cached (file/memory) to avoid API rate limits.
+2.  **Security:** NEVER log `APP_KEY`, `APP_SECRET` or `ACCESS_TOKEN` in the console or files.
+3.  **Environment:** Support both **Real (실전)** and **Virtual (모의)** domains via config.
+
+---
+
+## 🛠 Git & GitHub Workflow (Detailed)
+
+### 1. Issue & Branching
+Always start with a GitHub Issue.
 
 ```bash
-# 1. 현재 이슈 확인
+# Check issues
 gh issue list
 
-# 2. 특정 이슈 상세 보기
-gh issue view [issue_number]
-```
-
-### 2. Feature 브랜치 생성
-
-새로운 작업을 시작할 때는 항상 feature 브랜치를 생성합니다.
-
-```bash
-# main 브랜치에서 시작
+# Create Feature Branch
 git checkout main
 git pull origin main
-
-# feature 브랜치 생성 (네이밍: feature/issue-{번호}-{간단한-설명})
-git checkout -b feature/issue-2-stock-order-api
-
-# 또는
-git checkout -b feature/issue-3-websocket-realtime
+git checkout -b feature/issue-{number}-{description}
 ```
 
-**브랜치 네이밍 규칙:**
-- `feature/issue-{번호}-{설명}` - 새로운 기능
-- `fix/issue-{번호}-{설명}` - 버그 수정
-- `refactor/issue-{번호}-{설명}` - 리팩토링
-- `docs/issue-{번호}-{설명}` - 문서 작업
-
-### 3. 개발 및 커밋
-
-작업을 진행하고 의미 있는 단위로 커밋합니다.
+### 2. Commit Style (Korean)
+Commits must be in Korean and follow Conventional Commits.
 
 ```bash
-# 변경사항 확인
-git status
-git diff
+git commit -m "feat: KIS 인증 토큰 발급 로직 구현
 
-# 파일 스테이징
-git add [files...]
+- OAuth2 접근 토큰 발급 및 갱신 로직 추가
+- 토큰 파일 캐싱(token.json) 구현
+- .gitignore에 토큰 파일 추가
 
-# 커밋 (Conventional Commits 형식 사용)
-git commit -m "feat: Add stock order API endpoint
-
-- Implement buy/sell order functionality
-- Add order validation logic
-- Update API documentation
-
-Relates to #2
+Relates to #1
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ```
 
-**커밋 메시지 형식:**
-- `feat:` - 새로운 기능
+**Commit Prefix (Korean):**
+- `feat:` - 새로운 기능 추가
 - `fix:` - 버그 수정
-- `docs:` - 문서 변경
+- `docs:` - 문서 작성/수정
 - `refactor:` - 코드 리팩토링
 - `test:` - 테스트 추가/수정
-- `chore:` - 빌드 프로세스, 의존성 업데이트 등
+- `chore:` - 빌드, 패키지 매니저 설정
 
-### 4. 브랜치 푸시
-
-로컬 브랜치를 원격 저장소에 푸시합니다.
-
-```bash
-# 첫 푸시 시 upstream 설정
-git push -u origin feature/issue-2-stock-order-api
-
-# 이후 푸시
-git push
-```
-
-### 5. Pull Request 생성
-
-브랜치를 푸시한 후 PR을 생성합니다.
+### 3. Pull Request (PR)
+Use `gh` to create detailed PRs.
 
 ```bash
-# GitHub CLI를 사용한 PR 생성
-gh pr create --title "feat: Implement stock order API (#2)" --body "$(cat <<'EOF'
+gh pr create --title "feat: {Title} (#{IssueNumber})" --body "$(cat <<'EOF'
 ## Summary
-주식 매수/매도 API 엔드포인트 구현
+{간략한 요약}
 
 ## Changes
-- 매수/매도 주문 API 엔드포인트 추가
-- 주문 검증 로직 구현
-- API 문서 업데이트
+- {변경사항 1}
+- {변경사항 2}
 
 ## Test plan
-- [ ] 매수 주문 테스트
-- [ ] 매도 주문 테스트
-- [ ] 잘못된 입력값 검증 테스트
-- [ ] 모의투자 계좌에서 실제 주문 테스트
+- [ ] {테스트 항목 1}
+- [ ] {테스트 항목 2}
 
 ## Related Issues
-Closes #2
+Closes #{IssueNumber}
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+🤖 Generated with Claude Code
 EOF
 )"
-
-# 또는 간단하게
-gh pr create
-# (대화형으로 제목과 본문 입력)
 ```
 
-**PR 제목 형식:**
-- `feat: [기능 설명] (#이슈번호)`
-- `fix: [버그 설명] (#이슈번호)`
-- `docs: [문서 설명] (#이슈번호)`
+---
 
-### 6. 코드 리뷰 및 수정
+## ⚡ Claude Code Specific Guidelines
 
-PR 생성 후 리뷰를 받고 필요시 수정합니다.
+### Tool Usage
+- **Read Before Edit:** Always use `ls`, `cat`, or `grep` to understand the codebase before editing.
+- **Devlog First:** Do not skip the `docs/devlog/` step. It is the "brain" of the project.
+- **Run Tests:** Use `pytest` or `python -m pytest` frequently.
 
-```bash
-# 리뷰 피드백 반영 후 추가 커밋
-git add [files...]
-git commit -m "fix: Address review feedback"
-git push
+### Code Style
+- **Python:** PEP 8 compliance.
+- **Type Hints:** Mandatory for all function signatures (Pydantic style).
+- **Docstrings:** Required for complex logic (in Korean).
 
-# PR 상태 확인
-gh pr status
+### Communication
+- **Language:** Use Korean for all Devlogs, Commits, and PR descriptions.
+- **Tone:** Professional, technical, and concise.
 
-# PR 코멘트 확인
-gh pr view [pr_number]
+---
+
+## 🧪 Testing Guidelines
+
+### Test Structure
+```
+kis_api_backend/
+├── tests/
+│   ├── __init__.py
+│   ├── test_kis_client.py      # KIS API 클라이언트 테스트
+│   ├── test_token_manager.py   # 토큰 관리 테스트
+│   └── test_api/
+│       ├── __init__.py
+│       └── test_account.py     # API 엔드포인트 테스트
 ```
 
-### 7. PR 병합 및 이슈 종료
-
-리뷰가 완료되면 PR을 병합합니다.
-
+### Test Commands
 ```bash
-# PR 병합 (GitHub CLI)
-gh pr merge [pr_number] --squash
+# 모든 테스트 실행
+pytest
 
-# 또는 웹에서 "Squash and merge" 버튼 클릭
+# 특정 파일 테스트
+pytest tests/test_kis_client.py
+
+# 커버리지 확인
+pytest --cov=app --cov-report=html
+
+# 특정 테스트만 실행
+pytest tests/test_kis_client.py::test_get_balance -v
 ```
 
-**PR 본문에 다음 키워드를 사용하면 자동으로 이슈가 닫힙니다:**
-- `Closes #이슈번호`
-- `Fixes #이슈번호`
-- `Resolves #이슈번호`
+### Test Writing Rules
+1. **Mock External APIs:** KIS API 호출은 항상 mock 처리
+2. **Environment Variables:** 테스트에서는 `.env` 대신 fixture 사용
+3. **Test Naming:** `test_{method}_{scenario}` 형식 (e.g., `test_get_balance_success`)
 
-### 8. 브랜치 정리
+---
 
-PR이 병합된 후 로컬 브랜치를 정리합니다.
+## 📝 API Documentation
 
-```bash
-# main 브랜치로 전환
-git checkout main
+### FastAPI Auto-Docs
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
 
-# main 브랜치 업데이트
-git pull origin main
+### Endpoint Documentation Rules
+```python
+@router.get("/balance", response_model=BalanceResponse)
+def get_balance(
+    account_service: AccountService = Depends(get_account_service)
+):
+    """
+    계좌 잔고 조회
 
-# 병합된 브랜치 삭제
-git branch -d feature/issue-2-stock-order-api
+    KIS API를 통해 계좌의 잔고 정보를 조회합니다.
 
-# 원격 브랜치도 삭제 (자동으로 삭제되지 않은 경우)
-git push origin --delete feature/issue-2-stock-order-api
+    Returns:
+        BalanceResponse: 총 자산, 예수금, 손익, 보유 종목 정보
+
+    Raises:
+        HTTPException: KIS API 호출 실패 시 500 에러
+    """
+    return account_service.get_balance()
 ```
 
-## 빠른 참조
+---
 
-### 전체 워크플로우 요약
+## 🚨 Error Handling
 
-```bash
-# 1. 이슈 확인 및 브랜치 생성
-git checkout main
-git pull origin main
-git checkout -b feature/issue-X-description
+### Exception Hierarchy
+```python
+# app/core/exceptions.py
+class KISAPIError(Exception):
+    """KIS API 관련 기본 예외"""
+    pass
 
-# 2. 작업 및 커밋
-# ... 코드 작성 ...
-git add .
-git commit -m "feat: Description"
+class TokenExpiredError(KISAPIError):
+    """토큰 만료 예외"""
+    pass
 
-# 3. 푸시 및 PR 생성
-git push -u origin feature/issue-X-description
-gh pr create
-
-# 4. 병합 후 정리
-git checkout main
-git pull origin main
-git branch -d feature/issue-X-description
+class InvalidAccountError(KISAPIError):
+    """유효하지 않은 계좌 정보"""
+    pass
 ```
 
-### 유용한 Git 명령어
+### API Error Response
+```python
+from fastapi import HTTPException, status
 
-```bash
-# 현재 브랜치 확인
-git branch
+# Bad Request (400)
+raise HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="잘못된 요청입니다."
+)
 
-# 브랜치 전환
-git checkout [branch_name]
+# Unauthorized (401)
+raise HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="인증이 필요합니다."
+)
 
-# 변경사항 임시 저장
-git stash
-git stash pop
-
-# 최근 커밋 수정
-git commit --amend
-
-# 로그 확인
-git log --oneline -10
-
-# 원격 저장소 동기화
-git fetch origin
-git pull origin main
+# Internal Server Error (500)
+raise HTTPException(
+    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    detail=f"KIS API 호출 실패: {str(e)}"
+)
 ```
 
-### GitHub CLI 명령어
+---
 
+## 📊 Logging
+
+### Logging Configuration
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 사용 예시
+logger.info("토큰 발급 성공")
+logger.warning("토큰 만료 임박")
+logger.error(f"API 호출 실패: {error}")
+```
+
+### Logging Rules
+1. **민감 정보 금지:** `APP_KEY`, `APP_SECRET`, `ACCESS_TOKEN` 절대 로그에 남기지 않음
+2. **로그 레벨:**
+   - `DEBUG`: 개발 중 디버깅 정보
+   - `INFO`: 일반적인 동작 흐름
+   - `WARNING`: 경고 (토큰 만료 임박 등)
+   - `ERROR`: 에러 발생
+
+---
+
+## 🔐 Security Checklist
+
+- [ ] `.env` 파일이 `.gitignore`에 포함되어 있는가?
+- [ ] `token.json` 파일이 `.gitignore`에 포함되어 있는가?
+- [ ] 민감 정보가 로그에 출력되지 않는가?
+- [ ] API 키가 코드에 하드코딩되지 않았는가?
+- [ ] 환경 변수가 `pydantic-settings`로 관리되는가?
+
+---
+
+## 🔄 Development Cycle Summary
+
+```
+1. Issue 확인 (gh issue view)
+   ↓
+2. Devlog 작성 (docs/devlog/)
+   ↓
+3. 사용자 승인 대기
+   ↓
+4. Branch 생성 (feature/issue-X-description)
+   ↓
+5. 코드 구현
+   ↓
+6. 테스트 실행 (pytest)
+   ↓
+7. Commit (Korean + Conventional Commits)
+   ↓
+8. Push & PR 생성
+   ↓
+9. 리뷰 & Merge
+   ↓
+10. Branch 정리
+```
+
+---
+
+## 📚 Quick Reference
+
+### Essential Commands
 ```bash
-# 이슈 관리
+# 개발 서버 실행
+cd kis_api_backend
+source venv/bin/activate  # or: source ../venv/bin/activate
+uvicorn app.main:app --reload
+
+# 테스트 실행
+pytest
+
+# 이슈 & PR
 gh issue list
-gh issue view [number]
-gh issue create
-gh issue close [number]
-
-# PR 관리
-gh pr list
-gh pr view [number]
+gh issue view {number}
 gh pr create
-gh pr merge [number]
-gh pr status
+gh pr list
 
-# 저장소 확인
-gh repo view
+# Git 기본
+git status
+git diff
+git log --oneline -10
 ```
 
-## 개발 규칙
+### Environment Setup
+```bash
+# 가상환경 생성 및 활성화
+python3 -m venv venv
+source venv/bin/activate
 
-### 1. 코드 스타일
-- Python: PEP 8 스타일 가이드 준수
-- 함수/변수명: snake_case 사용
-- 클래스명: PascalCase 사용
-- 상수: UPPER_SNAKE_CASE 사용
+# 패키지 설치
+pip install -r kis_api_backend/requirements.txt
 
-### 2. 커밋 규칙
-- 하나의 커밋은 하나의 논리적 변경사항만 포함
-- 커밋 메시지는 명확하고 구체적으로 작성
-- Co-Authored-By 태그로 Claude 기여 명시
+# 환경 변수 설정
+cp kis_api_backend/.env.example kis_api_backend/.env
+# .env 파일을 편집하여 실제 값 입력
+```
 
-### 3. PR 규칙
-- 하나의 PR은 하나의 이슈와 연결
-- PR 제목은 변경사항을 명확하게 표현
-- PR 본문에 변경사항, 테스트 계획, 관련 이슈 명시
-- 리뷰 가능한 크기로 PR 분할 (500줄 이하 권장)
+---
 
-### 4. 이슈 관리
-- 작업 시작 전 이슈 생성
-- 이슈에 작업 계획과 완료 조건 명시
-- 개발 로그는 `docs/devlog/` 디렉토리에 마크다운 파일로 작성
-
-## 참고 자료
-
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [GitHub Flow](https://guides.github.com/introduction/flow/)
-- [Git 브랜치 전략](https://nvie.com/posts/a-successful-git-branching-model/)
+**Last Updated:** 2026-01-23
+**Maintained By:** Claude Code & Human Developer
