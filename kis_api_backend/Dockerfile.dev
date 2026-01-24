@@ -1,0 +1,24 @@
+# 개발용 Dockerfile
+# 용도: 로컬 개발 환경에서 빠른 반복 개발을 위한 설정
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 개발 도구 설치 (curl for healthcheck)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# 의존성 파일 복사 및 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 소스 코드는 볼륨 마운트로 제공
+# COPY는 하지 않음 - docker-compose에서 volumes로 마운트
+
+# 포트 노출
+EXPOSE 8000
+
+# 개발 서버 실행 (hot reload 활성화)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
