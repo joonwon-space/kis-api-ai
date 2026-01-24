@@ -1,0 +1,110 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 가상 환경
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 환경 설정 및 민감 정보
+.env
+.env.*
+!.env.example
+token.json
+*.token
+
+# 테스트
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+tests/
+test_*.py
+*_test.py
+
+# 개발 도구
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.mypy_cache/
+.pytype/
+.pyre/
+
+# 문서
+*.md
+docs/
+*.rst
+*.txt
+!requirements.txt
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker 관련
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 로그
+*.log
+logs/
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# 기타
+.cache/
+.pytest_cache/

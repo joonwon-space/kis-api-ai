@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./kis_api_backend
+      dockerfile: Dockerfile
+    container_name: kis-api-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./kis_api_backend/.env
+    volumes:
+      # 소스 코드 마운트 (개발 시 hot reload)
+      - ./kis_api_backend/app:/app/app:ro
+      # 토큰 파일 영속화 (읽기/쓰기)
+      - ./kis_api_backend/token.json:/app/token.json
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - kis-network
+
+networks:
+  kis-network:
+    driver: bridge
