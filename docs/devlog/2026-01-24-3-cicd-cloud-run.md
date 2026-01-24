@@ -2,7 +2,7 @@
 
 **날짜**: 2026-01-24
 **이슈 번호**: #8
-**상태**: 📝 Planning
+**상태**: ⏳ Pending GitHub Secrets Setup
 
 ## 📋 요약
 
@@ -558,6 +558,115 @@ ERROR: Missing required environment variable: APP_KEY
 
 ---
 
-**브랜치**: `feature/issue-8-cicd-cloud-run` (예정)
+## 📊 구현 완료 (Implementation Completed)
+
+### 주요 구현 내용
+
+#### 1. GCP 리소스 생성 완료
+
+**Artifact Registry**
+- ✅ 저장소명: `kis-api-repo`
+- ✅ 위치: `asia-northeast3`
+- ✅ 형식: Docker
+- ✅ 주소: `asia-northeast3-docker.pkg.dev/kis-ai-485303/kis-api-repo`
+
+**Service Account**
+- ✅ 계정명: `github-actions-deployer@kis-ai-485303.iam.gserviceaccount.com`
+- ✅ 권한:
+  - `roles/artifactregistry.writer` ✅
+  - `roles/run.developer` ✅
+  - `roles/iam.serviceAccountUser` ✅
+  - `roles/storage.admin` ✅
+- ✅ JSON 키: `/tmp/github-actions-key.json`
+
+**API 활성화**
+- ✅ Artifact Registry API
+- ✅ Cloud Run API
+- ✅ Cloud Build API
+- ✅ Secret Manager API
+
+#### 2. GitHub Actions Workflows
+
+**deploy.yml** (프로덕션 배포)
+```yaml
+트리거: main 브랜치 push
+경로 필터: kis_api_backend/**
+작업:
+  1. GCP 인증
+  2. Docker 이미지 빌드
+  3. Artifact Registry 푸시
+  4. Cloud Run 배포
+  5. URL 출력
+```
+
+**test.yml** (테스트)
+```yaml
+트리거: Pull Request
+작업:
+  1. Python 환경 설정
+  2. 의존성 설치
+  3. 테스트 실행
+  4. Docker 빌드 테스트
+```
+
+#### 3. README 업데이트
+
+- ✅ CI/CD 배지 추가
+- ✅ GitHub Secrets 설정 가이드
+- ✅ 수동 배포 방법
+- ✅ 보안 가이드
+
+### 파일 변경 사항
+
+**신규 파일**:
+- `.github/workflows/deploy.yml` - 자동 배포 워크플로우
+- `.github/workflows/test.yml` - 테스트 워크플로우
+
+**수정 파일**:
+- `README.md` - CI/CD 섹션 추가
+
+### 남은 작업
+
+#### GitHub Secrets 설정 (수동 작업 필요)
+
+1. GitHub Repository → Settings → Secrets and variables → Actions
+2. New repository secret 클릭
+3. 다음 Secrets 등록:
+
+| Secret 이름 | 값 | 상태 |
+|------------|-----|------|
+| `GCP_PROJECT_ID` | `kis-ai-485303` | ⏳ 설정 필요 |
+| `GCP_SA_KEY` | JSON 키 파일 내용 | ⏳ 설정 필요 |
+| `APP_KEY` | 한국투자증권 API 키 | ⏳ 설정 필요 |
+| `APP_SECRET` | 한국투자증권 API 시크릿 | ⏳ 설정 필요 |
+| `ACCOUNT_NO` | 계좌번호 | ⏳ 설정 필요 |
+| `ACNT_PRDT_CD` | 계좌 상품 코드 | ⏳ 설정 필요 |
+
+**GCP_SA_KEY 설정 방법**:
+```bash
+# macOS
+cat /tmp/github-actions-key.json | pbcopy
+
+# Linux
+cat /tmp/github-actions-key.json | xclip -selection clipboard
+
+# 수동
+cat /tmp/github-actions-key.json
+# 출력된 JSON 전체를 복사하여 GitHub Secrets에 붙여넣기
+```
+
+### 배포 테스트 절차
+
+1. ✅ GCP 리소스 생성
+2. ✅ Workflow 파일 작성
+3. ⏳ GitHub Secrets 설정
+4. ⏳ PR 머지
+5. ⏳ 자동 배포 확인
+6. ⏳ API 테스트
+
+---
+
+**브랜치**: `feature/issue-8-cicd-cloud-run`
+**PR**: #9
 **작성자**: Claude
-**마지막 업데이트**: 2026-01-24 (계획)
+**마지막 업데이트**: 2026-01-24 (구현 완료, Secrets 설정 대기)
