@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api.v1 import account, stock
 from app.services.stock_master_service import stock_master_service
@@ -19,6 +20,19 @@ app = FastAPI(
     description="한국투자증권 API 백엔드 서비스",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://kis-stock-web-ai.vercel.app",
+        "http://localhost:3000",  # 로컬 개발용
+        "http://localhost:5173",  # Vite 기본 포트
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
