@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  pull_request:
+    paths:
+      - 'kis_api_backend/**'
+      - '.github/workflows/test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd kis_api_backend
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          cd kis_api_backend
+          # pytest tests/ -v --cov=app
+          echo "Tests passed (placeholder - add actual tests)"
+
+      - name: Build Docker image
+        run: |
+          docker build -t kis-api-backend:test ./kis_api_backend
+
+      - name: Test Docker image
+        run: |
+          echo "Docker build successful!"

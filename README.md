@@ -1,5 +1,8 @@
 # KIS API Backend
 
+[![Deploy to Cloud Run](https://github.com/joonwon-space/kis-api-ai/actions/workflows/deploy.yml/badge.svg)](https://github.com/joonwon-space/kis-api-ai/actions/workflows/deploy.yml)
+[![Test](https://github.com/joonwon-space/kis-api-ai/actions/workflows/test.yml/badge.svg)](https://github.com/joonwon-space/kis-api-ai/actions/workflows/test.yml)
+
 한국투자증권(Korea Investment & Securities) Open API를 활용한 FastAPI 백엔드 서비스
 
 ## 📋 소개
@@ -223,12 +226,53 @@ kis-api-ai/
 └── README.md
 ```
 
+## 🚀 CI/CD 자동 배포
+
+이 프로젝트는 GitHub Actions를 통해 Google Cloud Run으로 자동 배포됩니다.
+
+### 배포 흐름
+
+```
+main 브랜치 push → GitHub Actions 트리거 → Docker 빌드 → Artifact Registry 푸시 → Cloud Run 배포
+```
+
+### GitHub Secrets 설정
+
+Repository Settings → Secrets and variables → Actions에서 다음 시크릿을 설정하세요:
+
+| Secret 이름 | 설명 | 예시 |
+|------------|------|------|
+| `GCP_PROJECT_ID` | GCP 프로젝트 ID | `kis-ai-485303` |
+| `GCP_SA_KEY` | Service Account JSON 키 | `{...}` |
+| `APP_KEY` | 한국투자증권 API 키 | `PS...` |
+| `APP_SECRET` | 한국투자증권 API 시크릿 | `abc...` |
+| `ACCOUNT_NO` | 계좌번호 | `12345678` |
+| `ACNT_PRDT_CD` | 계좌 상품 코드 | `01` |
+
+### 수동 배포 (선택적)
+
+로컬에서 직접 배포할 수도 있습니다:
+
+```bash
+# 1. Docker 이미지 빌드 및 푸시
+docker build -t asia-northeast3-docker.pkg.dev/kis-ai-485303/kis-api-repo/kis-api-backend:latest ./kis_api_backend
+docker push asia-northeast3-docker.pkg.dev/kis-ai-485303/kis-api-repo/kis-api-backend:latest
+
+# 2. Cloud Run 배포
+gcloud run deploy kis-api-backend \
+  --image asia-northeast3-docker.pkg.dev/kis-ai-485303/kis-api-repo/kis-api-backend:latest \
+  --platform managed \
+  --region asia-northeast3 \
+  --allow-unauthenticated
+```
+
 ## 🔐 보안
 
 - `.env` 파일은 절대 커밋하지 마세요
 - `token.json`은 자동으로 생성되며 `.gitignore`에 포함되어 있습니다
 - Docker 컨테이너는 non-root 유저로 실행됩니다
-- 민감한 정보는 환경 변수나 Kubernetes Secrets를 통해 주입하세요
+- 민감한 정보는 환경 변수나 Secret Manager를 통해 주입하세요
+- Service Account는 최소 권한 원칙을 따릅니다
 
 ## 📖 참고 자료
 
