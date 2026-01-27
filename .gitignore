@@ -28,6 +28,10 @@ venv.bak/
 token.json
 *.token
 
+# Database
+kis_api.db
+*.db
+
 # IDEs
 .idea/
 .vscode/
