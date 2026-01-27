@@ -2,13 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api.v1 import account, stock
+from app.api.v1.endpoints import auth
 from app.services.stock_master_service import stock_master_service
+from app.db.database import create_db_and_tables
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 처리"""
     # Startup
+    create_db_and_tables()  # DB 초기화
     stock_master_service.initialize()
     yield
     # Shutdown
@@ -36,6 +39,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(account.router, prefix="/api/v1/account", tags=["account"])
 app.include_router(stock.router, prefix="/api/v1/stock", tags=["stock"])
 
