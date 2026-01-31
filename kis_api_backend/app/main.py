@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api.v1 import account, stock
-from app.api.v1.endpoints import auth, user_settings
+from app.api.v1.endpoints import auth, user_settings, dashboard
 from app.services.stock_master_service import stock_master_service
 from app.db.database import create_db_and_tables
 
@@ -41,6 +41,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(user_settings.router, prefix="/api/v1", tags=["User Settings"])
+app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 app.include_router(account.router, prefix="/api/v1/account", tags=["account"])
 app.include_router(stock.router, prefix="/api/v1/stock", tags=["stock"])
 
