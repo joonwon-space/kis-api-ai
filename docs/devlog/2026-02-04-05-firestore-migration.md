@@ -277,5 +277,41 @@ daily_assets (Collection)
 - [ ] 배포 및 데이터 영속성 검증
 - [ ] 재배포 후 데이터 유지 확인
 
-### 다음 스텝
-UserKeyService를 Firestore로 마이그레이션하여 API 키 저장/조회 기능 복원
+### 다음 스텝 (Phase 5)
+배포 및 검증
+
+## [Phase 2-4 전체 완료]
+
+### 완료 요약
+- ✅ Phase 1: Auth 기본 구조 (User 모델)
+- ✅ Phase 2: UserSettings (KIS API 키)
+- ✅ Phase 3: DailyAsset 스냅샷
+- ✅ Phase 4: Stats 통계
+
+### 총 변경 파일 (15개)
+- requirements.txt — google-cloud-firestore 추가
+- app/db/firestore.py — Firestore 클라이언트 (신규)
+- app/db/models.py — to_dict/from_dict 메서드
+- app/services/auth_service.py — Firestore 쿼리
+- app/services/user_key_service.py — Firestore 쿼리
+- app/services/asset_snapshot_service.py — Firestore 쿼리
+- app/services/stats_service.py — Firestore 쿼리
+- app/api/v1/endpoints/auth.py — get_firestore_db
+- app/api/v1/endpoints/user_settings.py — get_firestore_db
+- app/api/v1/endpoints/dashboard.py — get_firestore_db
+- app/api/v1/endpoints/stats.py — get_firestore_db
+- app/core/deps.py — email 기반 인증
+- app/main.py — Firestore 초기화
+- docs/devlog/2026-02-04-05-firestore-migration.md
+
+### SQLite → Firestore 마이그레이션 완료
+- ✅ 모든 user_id를 email로 변경
+- ✅ 모든 Session을 firestore.Client로 변경
+- ✅ 모든 데이터가 Firestore에 저장
+- ✅ 데이터 영속성 확보
+
+### 다음 작업: Phase 5 배포
+1. Cloud Run Service Account에 Firestore 권한 추가
+2. 로컬 테스트 실행
+3. PR 생성 및 배포
+4. 재배포 후 데이터 영속성 검증
