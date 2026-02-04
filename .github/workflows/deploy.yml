@@ -64,6 +64,8 @@ jobs:
             --max-instances=10
             --memory=512Mi
             --cpu=1
+            --startup-cpu-boost
+            --timeout=300
           env_vars: |
             IS_SIMULATION=true
             APP_KEY=${{ secrets.APP_KEY }}
