@@ -24,6 +24,52 @@ MANDATORY workflow:
 3. Verify mocks are correct
 4. Fix implementation, not tests (unless tests are wrong)
 
+## Success Criteria
+
+Before marking any task complete, verify:
+
+### Test Results
+- All tests pass: Look for `===== XX passed =====` in pytest output
+- Test coverage ≥80%: Run `pytest --cov=app --cov-report=term`
+- No warnings about missing fixtures or deprecated features
+
+### Code Quality
+- No `console.log`, `print()`, or debug statements in production code
+- No commented-out code blocks
+- All imports used (no unused imports)
+- Type hints present for all function signatures
+
+### API Verification
+- Health endpoint returns: `{"status":"healthy"}`
+- API docs accessible at `/docs` (Swagger UI)
+- All new endpoints return proper status codes:
+  - 200 for success
+  - 400 for validation errors
+  - 401 for auth failures
+  - 500 for server errors
+
+### Deployment Verification
+- GitHub Actions tests pass (green checkmark)
+- Cloud Run deployment succeeds
+- Deployed service responds to health check
+- New endpoints accessible on production URL
+
+### Example Success Output
+
+```bash
+# Pytest
+===== 39 passed, 201 warnings in 3.14s =====
+
+# Health Check
+$ curl https://kis-api-backend-cudfz6ybdq-du.a.run.app/health
+{"status":"healthy"}
+
+# Coverage
+app/services/stats_service.py    95%
+app/api/v1/endpoints/stats.py    88%
+TOTAL                             82%
+```
+
 ## Agent Support
 
 - **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
