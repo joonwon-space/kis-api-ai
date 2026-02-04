@@ -3,15 +3,16 @@ from pathlib import Path
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlmodel import Session
+from google.cloud import firestore
 
 # Add parent directory to path to import kis_client
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from app.db.database import get_session
+from app.db.firestore import get_firestore_db
 from app.db.models import User
 from app.core.security import decode_access_token
 from app.services.user_key_service import UserKeyService
+from app.services.auth_service import AuthService
 from app.config import settings
 from kis_client import KISClient
 
@@ -20,9 +21,13 @@ security = HTTPBearer()
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ) -> User:
-    """현재 로그인한 사용자 가져오기 (Protected Route용)"""
+    """
+    현재 로그인한 사용자 가져오기 (Protected Route용)
+
+    JWT 토큰에서 email을 추출하여 Firestore에서 사용자 정보를 조회합니다.
+    """
     token = credentials.credentials
 
     payload = decode_access_token(token)
@@ -33,15 +38,18 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id: Optional[int] = payload.get("user_id")
-    if user_id is None:
+    email: Optional[str] = payload.get("email")
+    if email is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="토큰에 사용자 정보가 없습니다.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.get(User, user_id)
+    # Firestore에서 사용자 조회
+    auth_service = AuthService(db)
+    user = auth_service.get_user_by_email(email)
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,7 +67,7 @@ def get_current_user(
 
 def get_kis_client(
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ) -> KISClient:
     """현재 사용자의 KIS 클라이언트 반환
 
@@ -67,7 +75,7 @@ def get_kis_client(
 
     Args:
         current_user: 현재 로그인한 사용자
-        session: DB 세션
+        db: Firestore 클라이언트
 
     Returns:
         KISClient: 사용자별 KIS API 클라이언트
@@ -75,8 +83,8 @@ def get_kis_client(
     Raises:
         HTTPException: API 키가 등록되지 않은 경우 400 에러
     """
-    service = UserKeyService(session)
-    keys = service.get_decrypted_keys(current_user.id)
+    service = UserKeyService(db)
+    keys = service.get_decrypted_keys(current_user.email)
 
     if not keys:
         raise HTTPException(

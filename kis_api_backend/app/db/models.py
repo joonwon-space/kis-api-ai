@@ -18,6 +18,60 @@ class User(SQLModel, table=True):
     full_name: Optional[str] = Field(default=None, max_length=100)
     auth_provider: str = Field(default="email", max_length=50)  # "email", "google", etc.
 
+    def to_dict(self) -> dict:
+        """
+        Firestore 저장용 딕셔너리 변환
+
+        Note:
+        - id 필드는 제외 (Firestore document ID로 email 사용)
+        - datetime을 ISO 문자열로 변환
+        """
+        return {
+            "email": self.email,
+            "password_hash": self.password_hash,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "full_name": self.full_name,
+            "auth_provider": self.auth_provider,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "User":
+        """
+        Firestore 데이터를 User 모델로 변환
+
+        Args:
+            data: Firestore document 데이터
+
+        Returns:
+            User: User 모델 인스턴스
+        """
+        # ISO 문자열을 datetime 객체로 변환
+        created_at = None
+        if data.get("created_at"):
+            if isinstance(data["created_at"], str):
+                created_at = datetime.fromisoformat(data["created_at"])
+            else:
+                created_at = data["created_at"]
+
+        updated_at = None
+        if data.get("updated_at"):
+            if isinstance(data["updated_at"], str):
+                updated_at = datetime.fromisoformat(data["updated_at"])
+            else:
+                updated_at = data["updated_at"]
+
+        return cls(
+            email=data["email"],
+            password_hash=data["password_hash"],
+            is_active=data.get("is_active", True),
+            created_at=created_at or datetime.utcnow(),
+            updated_at=updated_at,
+            full_name=data.get("full_name"),
+            auth_provider=data.get("auth_provider", "email"),
+        )
+
 
 class UserKey(SQLModel, table=True):
     """사용자별 증권사 API 키 (암호화 저장)

@@ -2,17 +2,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 from app.api.v1 import account, stock
 from app.api.v1.endpoints import auth, user_settings, dashboard, stats
 from app.services.stock_master_service import stock_master_service
-from app.db.database import create_db_and_tables
+from app.db.firestore import get_firestore_client
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 처리"""
     # Startup
-    create_db_and_tables()  # DB 초기화
+    # Firestore 클라이언트 초기화 (싱글톤 생성)
+    try:
+        get_firestore_client()
+        logger.info("Firestore client initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize Firestore: {e}")
+        raise
 
     # 종목 마스터 데이터를 백그라운드 태스크로 초기화
     # 서버 시작을 블로킹하지 않고, 백그라운드에서 데이터 로드
