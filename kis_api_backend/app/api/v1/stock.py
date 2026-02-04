@@ -44,7 +44,7 @@ def debug_stock_response(stock_code: str):
 
 
 @router.get("/quote", response_model=StockQuote)
-def get_stock_quote(
+async def get_stock_quote(
     keyword: str = Query(
         ...,
         description="종목명 또는 종목코드/심볼 (예: '삼성전자', '005930', 'AAPL')",
@@ -89,7 +89,7 @@ def get_stock_quote(
     """
     try:
         stock_service = StockService(kis_client)
-        return stock_service.get_quote(keyword)
+        return await stock_service.get_quote(keyword)
     except ValueError as e:
         # 종목을 찾을 수 없는 경우
         raise HTTPException(status_code=404, detail=str(e))
