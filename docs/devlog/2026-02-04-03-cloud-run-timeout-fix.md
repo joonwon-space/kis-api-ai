@@ -44,3 +44,28 @@
 ### 다음 할 일
 - main 브랜치에 직접 푸시
 - GitHub Actions 배포 결과 확인
+
+---
+
+## [20:47] 추가 수정
+
+### 발견된 문제
+- `--startup-cpu-boost` 플래그 이름 오류 → `--cpu-boost`로 수정
+- 여전히 배포 실패: 환경 변수 누락 발견
+  - `ENCRYPTION_KEY` (required field)
+  - `SECRET_KEY`
+
+### 해결
+- [x] Cloud Run 플래그 수정: `--cpu-boost`
+- [x] GitHub Secrets에 `SECRET_KEY`, `ENCRYPTION_KEY` 추가
+- [x] deploy.yml에 환경 변수 추가
+
+### 최종 결과
+✅ **배포 성공!** (Run ID: 21670175003)
+- 모든 단계 완료
+- Cloud Run 서비스 정상 실행
+
+### 교훈
+- Cloud Run 배포 실패 시 필수 환경 변수 확인 필요
+- 로컬에서 작동해도 프로덕션 환경 변수 설정은 별도로 관리
+- 에러 로그만으로는 환경 변수 누락을 파악하기 어려움
