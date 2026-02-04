@@ -20,7 +20,7 @@ class StockService:
         self.kis_client = kis_client
         self.master_service = stock_master_service
 
-    def get_quote(self, keyword: str) -> StockQuote:
+    async def get_quote(self, keyword: str) -> StockQuote:
         """
         주식 현재가 조회
 
@@ -33,8 +33,8 @@ class StockService:
         Raises:
             ValueError: 종목을 찾을 수 없는 경우
         """
-        # 1. 종목 검색 (캐시)
-        stock = self.master_service.search(keyword)
+        # 1. 종목 검색 (캐시) - 초기화 완료 대기 포함
+        stock = await self.master_service.search(keyword)
 
         # 2. 캐시에 없으면 종목코드인지 확인 (6자리 숫자)
         if not stock and keyword.isdigit() and len(keyword) == 6:

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
 from app.api.v1 import account, stock
 from app.api.v1.endpoints import auth, user_settings, dashboard
 from app.services.stock_master_service import stock_master_service
@@ -12,7 +13,11 @@ async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 처리"""
     # Startup
     create_db_and_tables()  # DB 초기화
-    stock_master_service.initialize()
+
+    # 종목 마스터 데이터를 백그라운드 태스크로 초기화
+    # 서버 시작을 블로킹하지 않고, 백그라운드에서 데이터 로드
+    asyncio.create_task(stock_master_service.initialize())
+
     yield
     # Shutdown
     # 필요한 정리 작업

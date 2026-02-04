@@ -1,6 +1,7 @@
 """종목 마스터 데이터 관리 서비스"""
 import httpx
 import logging
+import asyncio
 from typing import Dict, Optional, List
 from datetime import datetime
 import zipfile
@@ -30,25 +31,38 @@ class StockMasterService:
             "last_updated": None
         }
         self._initialized = False
+        self._initializing = False
+        self._init_lock = asyncio.Lock()
 
-    def initialize(self):
+    async def initialize(self):
         """
-        종목 데이터 초기화
+        종목 데이터 초기화 (비동기)
 
         외부 API에서 종목 데이터를 다운로드하고 캐시를 구축합니다.
+        백그라운드 태스크로 실행 가능하며, 중복 초기화를 방지합니다.
         """
-        if self._initialized:
-            logger.info("Stock master already initialized")
-            return
+        async with self._init_lock:
+            if self._initialized:
+                logger.info("Stock master already initialized")
+                return
+
+            if self._initializing:
+                logger.info("Stock master initialization already in progress")
+                return
+
+            self._initializing = True
 
         try:
             logger.info("Initializing stock master data...")
 
+            # 비동기 처리를 위해 executor 사용
+            loop = asyncio.get_event_loop()
+
             # 국내 주식 데이터 로드
-            self._load_domestic_stocks()
+            await loop.run_in_executor(None, self._load_domestic_stocks)
 
             # 해외 주식 데이터 로드 (기본 주요 종목만)
-            self._load_overseas_stocks()
+            await loop.run_in_executor(None, self._load_overseas_stocks)
 
             self.cache["last_updated"] = datetime.now().isoformat()
             self._initialized = True
@@ -60,6 +74,36 @@ class StockMasterService:
             logger.error(f"Failed to initialize stock master: {e}")
             # 초기화 실패 시에도 기본 데이터로 동작 가능하도록
             self._load_fallback_data()
+        finally:
+            self._initializing = False
+
+    async def ensure_initialized(self):
+        """
+        초기화 상태 확인 및 대기 (Lazy Loading)
+
+        초기화가 완료되지 않았다면 완료될 때까지 대기합니다.
+        API 요청 시 자동으로 호출되어 데이터 준비를 보장합니다.
+        """
+        # 이미 초기화 완료
+        if self._initialized:
+            return
+
+        # 초기화 진행 중이면 완료 대기
+        if self._initializing:
+            logger.info("Waiting for stock master initialization to complete...")
+            max_wait = 60  # 최대 60초 대기
+            waited = 0
+            while self._initializing and waited < max_wait:
+                await asyncio.sleep(0.5)
+                waited += 0.5
+
+            if not self._initialized:
+                logger.warning("Stock master initialization timeout or failed")
+            return
+
+        # 초기화가 안 되어 있고 진행 중도 아니면 지금 초기화
+        logger.info("Stock master not initialized, initializing now...")
+        await self.initialize()
 
     def _load_domestic_stocks(self):
         """
@@ -307,11 +351,12 @@ class StockMasterService:
         self._initialized = True
         logger.warning("Loaded fallback stock data")
 
-    def search(self, keyword: str) -> Optional[Dict]:
+    async def search(self, keyword: str) -> Optional[Dict]:
         """
-        종목 검색
+        종목 검색 (비동기)
 
         캐시에서 종목을 검색합니다.
+        초기화가 완료되지 않았다면 자동으로 대기합니다.
 
         Args:
             keyword: 검색 키워드 (종목명 또는 코드/심볼)
@@ -325,8 +370,8 @@ class StockMasterService:
                 "exchange": "KRX"  # 해외 주식의 경우
             }
         """
-        if not self._initialized:
-            logger.warning("Stock master not initialized, searching anyway")
+        # 초기화 완료 대기 (Lazy Loading)
+        await self.ensure_initialized()
 
         keyword_upper = keyword.upper().strip()
 
