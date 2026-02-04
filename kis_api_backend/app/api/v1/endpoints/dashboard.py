@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from google.cloud import firestore
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
 from kis_client import KISClient
 from app.core.deps import get_current_user, get_kis_client
 from app.db.models import User
-from app.db.database import get_session
+from app.db.firestore import get_firestore_db
 from app.schemas.dashboard import DashboardSummary, DashboardHoldingsResponse
 from app.services.dashboard_service import DashboardService
 from app.services.asset_snapshot_service import AssetSnapshotService
@@ -24,12 +24,12 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
     kis_client: KISClient = Depends(get_kis_client),
-    session: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """대시보드 요약 정보 조회
 
     로그인한 사용자의 증권 계좌 요약 정보를 제공합니다.
-    조회 시 자동으로 당일 자산 스냅샷을 저장합니다.
+    조회 시 자동으로 당일 자산 스냅샷을 Firestore에 저장합니다.
 
     **필요 조건:**
     - JWT 인증 필수
@@ -38,7 +38,7 @@ def get_dashboard_summary(
     Args:
         current_user: 현재 로그인한 사용자
         kis_client: 사용자별 KIS API 클라이언트
-        session: DB 세션
+        db: Firestore 클라이언트
 
     Returns:
         DashboardSummary: 총 자산, 예수금, 손익, 보유 종목 수
@@ -49,12 +49,12 @@ def get_dashboard_summary(
     service = DashboardService(kis_client)
     summary = service.get_summary()
 
-    # 자산 스냅샷 자동 저장
+    # 자산 스냅샷 자동 저장 (Firestore)
     try:
-        snapshot_service = AssetSnapshotService(session)
-        snapshot_service.save_snapshot(current_user.id, summary)
+        snapshot_service = AssetSnapshotService(db)
+        snapshot_service.save_snapshot(current_user.email, summary)
     except Exception as e:
-        logger.warning(f"Failed to save snapshot for user {current_user.id}: {e}")
+        logger.warning(f"Failed to save snapshot for user {current_user.email}: {e}")
         # 스냅샷 저장 실패해도 대시보드 응답은 정상 반환
 
     return summary

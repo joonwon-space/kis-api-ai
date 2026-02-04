@@ -177,24 +177,105 @@ Firestore client initialized successfully
 
 ### 남은 작업 (Phase 2-5)
 
-#### Phase 2: UserSettings 마이그레이션
-- [ ] UserKeyService Firestore로 변경
-- [ ] users/{email}/settings/kis_credentials 서브컬렉션 사용
-- [ ] user_settings.py 엔드포인트 수정
+#### Phase 2: UserSettings 마이그레이션 ✅
+- [x] UserKeyService Firestore로 변경
+- [x] users/{email}/settings/kis_credentials 서브컬렉션 사용
+- [x] user_settings.py 엔드포인트 수정
 
-#### Phase 3: DailyAsset 마이그레이션
-- [ ] AssetSnapshotService Firestore로 변경
-- [ ] Document ID: `{email}_{YYYY-MM-DD}`
-- [ ] dashboard.py 자동 스냅샷 저장 수정
+## [Phase 2 완료] UserSettings 마이그레이션
 
-#### Phase 4: StatsService 마이그레이션
-- [ ] 일별/월별/연도별 통계 Firestore 쿼리로 변경
-- [ ] 집계 로직 클라이언트 사이드로 이동 (Firestore 제한)
+### 완료된 작업
+- [x] **UserKeyService 리팩토링**: app/services/user_key_service.py
+  - Session → firestore.Client 변경
+  - user_id → user_email 변경
+  - Firestore 서브컬렉션 사용: `users/{email}/settings/kis_credentials`
+  - 암호화 로직 유지
+  - create_or_update_user_key: set/update로 전환
+  - get_decrypted_keys: email 기반 조회
+
+- [x] **UserSettings 엔드포인트 수정**: app/api/v1/endpoints/user_settings.py
+  - get_session → get_firestore_db 변경
+  - current_user.id → current_user.email 사용
+  - ISO 문자열 → datetime 변환 처리
+
+### Firestore 구조
+```
+users/{email}/settings (Subcollection)
+  └─ kis_credentials (Document)
+      ├─ app_key_encrypted: string
+      ├─ app_secret_encrypted: string
+      ├─ account_no_encrypted: string
+      ├─ acnt_prdt_cd_encrypted: string
+      ├─ created_at: ISO string
+      └─ updated_at: ISO string
+```
+
+### 변경 파일
+- app/services/user_key_service.py — Firestore 쿼리
+- app/api/v1/endpoints/user_settings.py — get_firestore_db 사용
+
+#### Phase 3: DailyAsset 마이그레이션 ✅
+- [x] AssetSnapshotService Firestore로 변경
+- [x] Document ID: `{email}_{YYYY-MM-DD}`
+- [x] dashboard.py 자동 스냅샷 저장 수정
+
+#### Phase 4: StatsService 마이그레이션 ✅
+- [x] 일별/월별/연도별 통계 Firestore 쿼리로 변경
+- [x] 집계 로직 클라이언트 사이드로 처리
+
+## [Phase 3-4 완료] DailyAsset & Stats 마이그레이션
+
+### Phase 3: DailyAsset 스냅샷
+- [x] **AssetSnapshotService 리팩토링**: app/services/asset_snapshot_service.py
+  - Session → firestore.Client 변경
+  - user_id → user_email 변경
+  - Document ID: `{email}_{YYYY-MM-DD}` 형식
+  - Firestore 컬렉션: `daily_assets`
+  - 날짜 범위 쿼리: where + order_by로 구현
+
+- [x] **Dashboard 엔드포인트 수정**: app/api/v1/endpoints/dashboard.py
+  - get_session → get_firestore_db 변경
+  - current_user.id → current_user.email 사용
+
+### Phase 4: StatsService
+- [x] **StatsService 리팩토링**: app/services/stats_service.py
+  - Session → firestore.Client 변경
+  - user_id → user_email 변경
+  - dict 접근 방식으로 변경 (snapshot["field"])
+  - ISO 문자열 → date 변환 처리
+  - 클라이언트 사이드 집계 유지
+
+- [x] **Stats 엔드포인트 수정**: app/api/v1/endpoints/stats.py
+  - get_session → get_firestore_db 변경
+  - current_user.id → current_user.email 사용
+
+### Firestore 구조
+```
+daily_assets (Collection)
+  └─ {email}_{YYYY-MM-DD} (Document)
+      ├─ user_email: string
+      ├─ snapshot_date: string (YYYY-MM-DD)
+      ├─ total_asset: float
+      ├─ total_purchase_amount: float
+      ├─ total_profit_loss: float
+      ├─ profit_loss_rate: float
+      ├─ deposit: float
+      ├─ stock_evaluation: float
+      └─ created_at: ISO string
+```
+
+### 변경 파일 (Phase 3-4)
+- app/services/asset_snapshot_service.py — Firestore 쿼리
+- app/services/stats_service.py — Firestore 쿼리
+- app/api/v1/endpoints/dashboard.py — get_firestore_db 사용
+- app/api/v1/endpoints/stats.py — get_firestore_db 사용
 
 #### Phase 5: 배포 및 검증
-- [ ] 로컬 테스트 (회원가입/로그인)
+- [ ] 로컬 테스트 (회원가입/로그인/통계)
 - [ ] Cloud Run Service Account 권한 확인
+- [ ] deploy.yml에서 GCP_PROJECT_ID 환경변수 확인
 - [ ] 배포 및 데이터 영속성 검증
+- [ ] 재배포 후 데이터 유지 확인
 
 ### 다음 스텝
 UserKeyService를 Firestore로 마이그레이션하여 API 키 저장/조회 기능 복원

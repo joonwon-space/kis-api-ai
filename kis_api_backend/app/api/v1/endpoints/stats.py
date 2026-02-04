@@ -1,7 +1,7 @@
-"""통계 API 엔드포인트"""
+"""통계 API 엔드포인트 (Firestore 기반)"""
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
-from app.db.database import get_session
+from google.cloud import firestore
+from app.db.firestore import get_firestore_db
 from app.core.deps import get_current_user
 from app.db.models import User
 from app.services.stats_service import StatsService
@@ -18,12 +18,12 @@ router = APIRouter()
 def get_daily_stats(
     days: int = Query(default=30, ge=1, le=365, description="조회할 일수"),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """
     일별 자산 통계 조회
 
-    최근 N일간의 일별 자산 변동 추이를 조회합니다.
+    최근 N일간의 일별 자산 변동 추이를 Firestore에서 조회합니다.
 
     Args:
         days: 조회할 일수 (1~365, 기본값: 30)
@@ -37,8 +37,8 @@ def get_daily_stats(
             - deposit: 예수금
             - stock_evaluation: 주식 평가금액
     """
-    stats_service = StatsService(session)
-    daily_stats = stats_service.get_daily_stats(current_user.id, days)
+    stats_service = StatsService(db)
+    daily_stats = stats_service.get_daily_stats(current_user.email, days)
 
     return DailyStatsListResponse(
         success=True,
@@ -51,12 +51,12 @@ def get_daily_stats(
 def get_monthly_stats(
     months: int = Query(default=12, ge=1, le=60, description="조회할 월수"),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """
     월별 자산 통계 조회
 
-    최근 N개월간의 월별 누적 수익금 및 수익률을 조회합니다.
+    최근 N개월간의 월별 누적 수익금 및 수익률을 Firestore에서 조회합니다.
 
     Args:
         months: 조회할 월수 (1~60, 기본값: 12)
@@ -70,8 +70,8 @@ def get_monthly_stats(
             - profit_loss_rate: 월간 수익률 (%)
             - avg_daily_asset: 월평균 자산
     """
-    stats_service = StatsService(session)
-    monthly_stats = stats_service.get_monthly_stats(current_user.id, months)
+    stats_service = StatsService(db)
+    monthly_stats = stats_service.get_monthly_stats(current_user.email, months)
 
     return MonthlyStatsListResponse(
         success=True,
@@ -84,12 +84,12 @@ def get_monthly_stats(
 def get_yearly_stats(
     years: int = Query(default=5, ge=1, le=10, description="조회할 연수"),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """
     연도별 자산 통계 조회
 
-    최근 N년간의 연도별 수익률을 조회합니다.
+    최근 N년간의 연도별 수익률을 Firestore에서 조회합니다.
 
     Args:
         years: 조회할 연수 (1~10, 기본값: 5)
@@ -105,8 +105,8 @@ def get_yearly_stats(
             - min_asset: 최저 자산
             - avg_monthly_return: 월평균 수익률 (%)
     """
-    stats_service = StatsService(session)
-    yearly_stats = stats_service.get_yearly_stats(current_user.id, years)
+    stats_service = StatsService(db)
+    yearly_stats = stats_service.get_yearly_stats(current_user.email, years)
 
     return YearlyStatsListResponse(
         success=True,
