@@ -72,6 +72,8 @@ jobs:
             APP_SECRET=${{ secrets.APP_SECRET }}
             ACCOUNT_NO=${{ secrets.ACCOUNT_NO }}
             ACNT_PRDT_CD=${{ secrets.ACNT_PRDT_CD }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
 
       - name: Show deployment URL
         run: |
