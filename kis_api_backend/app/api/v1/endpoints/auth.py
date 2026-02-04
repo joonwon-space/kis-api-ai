@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
+from google.cloud import firestore
 
-from app.db.database import get_session
+from app.db.firestore import get_firestore_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.services.auth_service import AuthService
 from app.core.security import create_access_token
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def signup(
     user_data: UserCreate,
-    db: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """
     회원가입
@@ -31,7 +31,7 @@ def signup(
 @router.post("/login", response_model=Token)
 def login(
     login_data: UserLogin,
-    db: Session = Depends(get_session)
+    db: firestore.Client = Depends(get_firestore_db)
 ):
     """
     로그인
@@ -47,9 +47,9 @@ def login(
     auth_service = AuthService(db)
     user = auth_service.authenticate_user(login_data)
 
-    # JWT 토큰 생성
+    # JWT 토큰 생성 (Firestore에서는 email을 primary key로 사용)
     access_token = create_access_token(
-        data={"user_id": user.id, "email": user.email}
+        data={"email": user.email}
     )
 
     return Token(access_token=access_token)

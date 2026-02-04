@@ -1,8 +1,7 @@
-"""자산 스냅샷 저장 서비스"""
+"""자산 스냅샷 저장 서비스 (Firestore 기반)"""
 from datetime import date, datetime
 from typing import Optional
-from sqlmodel import Session, select
-from app.db.models import DailyAsset
+from google.cloud import firestore
 from app.schemas.dashboard import DashboardSummary
 import logging
 
@@ -10,36 +9,57 @@ logger = logging.getLogger(__name__)
 
 
 class AssetSnapshotService:
-    """자산 스냅샷 관리 서비스"""
+    """자산 스냅샷 관리 서비스 (Firestore 기반)
 
-    def __init__(self, session: Session):
-        self.session = session
+    Firestore 구조:
+        daily_assets/{email}_{YYYY-MM-DD}
+    """
+
+    def __init__(self, db: firestore.Client):
+        self.db = db
+        self.collection = db.collection("daily_assets")
+
+    def _get_doc_id(self, user_email: str, snapshot_date: date) -> str:
+        """
+        Document ID 생성: {email}_{YYYY-MM-DD}
+
+        Args:
+            user_email: 사용자 이메일
+            snapshot_date: 스냅샷 날짜
+
+        Returns:
+            str: Document ID
+        """
+        return f"{user_email}_{snapshot_date.isoformat()}"
 
     def save_snapshot(
         self,
-        user_id: int,
+        user_email: str,
         summary: DashboardSummary,
         snapshot_date: Optional[date] = None
-    ) -> DailyAsset:
+    ) -> dict:
         """
         자산 스냅샷 저장
 
         Args:
-            user_id: 사용자 ID
+            user_email: 사용자 이메일
             summary: 대시보드 요약 정보
             snapshot_date: 스냅샷 날짜 (기본값: 오늘)
 
         Returns:
-            DailyAsset: 저장된 스냅샷
+            dict: 저장된 스냅샷 데이터
         """
         if snapshot_date is None:
             snapshot_date = date.today()
 
+        doc_id = self._get_doc_id(user_email, snapshot_date)
+        doc_ref = self.collection.document(doc_id)
+
         # 기존 스냅샷 확인
-        existing = self.get_snapshot(user_id, snapshot_date)
-        if existing:
-            logger.info(f"Snapshot already exists for user {user_id} on {snapshot_date}")
-            return existing
+        doc = doc_ref.get()
+        if doc.exists:
+            logger.info(f"Snapshot already exists for {user_email} on {snapshot_date}")
+            return doc.to_dict()
 
         # 새 스냅샷 생성 (문자열 -> float 변환)
         total_asset = float(summary.total_assets.replace(",", ""))
@@ -51,78 +71,91 @@ class AssetSnapshotService:
         stock_evaluation = total_asset - total_deposit
         total_purchase_amount = stock_evaluation - total_profit_loss
 
-        snapshot = DailyAsset(
-            user_id=user_id,
-            snapshot_date=snapshot_date,
-            total_asset=total_asset,
-            total_purchase_amount=total_purchase_amount,
-            total_profit_loss=total_profit_loss,
-            profit_loss_rate=profit_loss_rate,
-            deposit=total_deposit,
-            stock_evaluation=stock_evaluation,
-        )
+        snapshot_data = {
+            "user_email": user_email,
+            "snapshot_date": snapshot_date.isoformat(),
+            "total_asset": total_asset,
+            "total_purchase_amount": total_purchase_amount,
+            "total_profit_loss": total_profit_loss,
+            "profit_loss_rate": profit_loss_rate,
+            "deposit": total_deposit,
+            "stock_evaluation": stock_evaluation,
+            "created_at": datetime.utcnow().isoformat(),
+        }
 
-        self.session.add(snapshot)
-        self.session.commit()
-        self.session.refresh(snapshot)
+        doc_ref.set(snapshot_data)
 
-        logger.info(f"Saved snapshot for user {user_id} on {snapshot_date}")
-        return snapshot
+        logger.info(f"Saved snapshot for {user_email} on {snapshot_date}")
+        return snapshot_data
 
-    def get_snapshot(self, user_id: int, snapshot_date: date) -> Optional[DailyAsset]:
+    def get_snapshot(self, user_email: str, snapshot_date: date) -> Optional[dict]:
         """
         특정 날짜의 스냅샷 조회
 
         Args:
-            user_id: 사용자 ID
+            user_email: 사용자 이메일
             snapshot_date: 조회할 날짜
 
         Returns:
-            Optional[DailyAsset]: 스냅샷 (없으면 None)
+            Optional[dict]: 스냅샷 데이터 (없으면 None)
         """
-        statement = select(DailyAsset).where(
-            DailyAsset.user_id == user_id,
-            DailyAsset.snapshot_date == snapshot_date
-        )
-        return self.session.exec(statement).first()
+        doc_id = self._get_doc_id(user_email, snapshot_date)
+        doc = self.collection.document(doc_id).get()
+
+        if not doc.exists:
+            return None
+
+        return doc.to_dict()
 
     def get_snapshots_range(
         self,
-        user_id: int,
+        user_email: str,
         start_date: date,
         end_date: date
-    ) -> list[DailyAsset]:
+    ) -> list[dict]:
         """
         특정 기간의 스냅샷 조회
 
         Args:
-            user_id: 사용자 ID
+            user_email: 사용자 이메일
             start_date: 시작 날짜
             end_date: 종료 날짜
 
         Returns:
-            list[DailyAsset]: 스냅샷 리스트 (날짜 오름차순)
+            list[dict]: 스냅샷 리스트 (날짜 오름차순)
         """
-        statement = select(DailyAsset).where(
-            DailyAsset.user_id == user_id,
-            DailyAsset.snapshot_date >= start_date,
-            DailyAsset.snapshot_date <= end_date
-        ).order_by(DailyAsset.snapshot_date)
+        # Firestore 쿼리: user_email과 날짜 범위로 필터링
+        query = (
+            self.collection
+            .where("user_email", "==", user_email)
+            .where("snapshot_date", ">=", start_date.isoformat())
+            .where("snapshot_date", "<=", end_date.isoformat())
+            .order_by("snapshot_date")
+        )
 
-        return list(self.session.exec(statement).all())
+        docs = query.stream()
+        return [doc.to_dict() for doc in docs]
 
-    def get_latest_snapshot(self, user_id: int) -> Optional[DailyAsset]:
+    def get_latest_snapshot(self, user_email: str) -> Optional[dict]:
         """
         가장 최근 스냅샷 조회
 
         Args:
-            user_id: 사용자 ID
+            user_email: 사용자 이메일
 
         Returns:
-            Optional[DailyAsset]: 최근 스냅샷 (없으면 None)
+            Optional[dict]: 최근 스냅샷 (없으면 None)
         """
-        statement = select(DailyAsset).where(
-            DailyAsset.user_id == user_id
-        ).order_by(DailyAsset.snapshot_date.desc()).limit(1)
+        # Firestore 쿼리: user_email 필터, snapshot_date 내림차순, limit 1
+        query = (
+            self.collection
+            .where("user_email", "==", user_email)
+            .order_by("snapshot_date", direction=firestore.Query.DESCENDING)
+            .limit(1)
+        )
 
-        return self.session.exec(statement).first()
+        docs = list(query.stream())
+        if not docs:
+            return None
+
+        return docs[0].to_dict()
