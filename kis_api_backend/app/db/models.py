@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Index
 
 
 class User(SQLModel, table=True):
@@ -38,3 +38,30 @@ class UserKey(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default=None)
+
+
+class DailyAsset(SQLModel, table=True):
+    """일별 자산 스냅샷
+
+    사용자의 일별 자산 현황을 저장하여 수익률 추이를 추적합니다.
+    """
+    __tablename__ = "daily_assets"
+    __table_args__ = (
+        Index('idx_user_date', 'user_id', 'snapshot_date', unique=True),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", index=True)
+    snapshot_date: date = Field(index=True)
+
+    # 자산 정보
+    total_asset: float = Field(default=0.0)  # 총 자산 (평가금액 + 예수금)
+    total_purchase_amount: float = Field(default=0.0)  # 총 매입금액
+    total_profit_loss: float = Field(default=0.0)  # 총 평가손익 (평가금액 - 매입금액)
+    profit_loss_rate: float = Field(default=0.0)  # 수익률 (%)
+
+    # 세부 정보
+    deposit: float = Field(default=0.0)  # 예수금
+    stock_evaluation: float = Field(default=0.0)  # 주식 평가금액
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
