@@ -15,8 +15,10 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    """User 응답 (비밀번호 제외)"""
-    id: int
+    """User 응답 (비밀번호 제외)
+
+    Note: Firestore에서는 email을 document ID로 사용하므로 id 필드 없음
+    """
     is_active: bool
     created_at: datetime
     auth_provider: str

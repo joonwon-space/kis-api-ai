@@ -200,3 +200,19 @@
 - [ ] 배포 후 회원가입 API 재테스트
 - [ ] Firestore Console에서 users 컬렉션 확인
 - [ ] Issue #22 종료
+
+---
+
+## [최종 해결] ResponseValidationError 수정
+
+### 추가 발견된 문제
+배포 후 회원가입 API 테스트 결과:
+```
+fastapi.exceptions.ResponseValidationError: 1 validation error
+```
+
+**원인**: UserResponse 스키마가 `id: int` 필드를 필수로 요구하지만, Firestore에서는 email을 document ID로 사용하므로 User 객체에 id가 없음
+
+### 최종 수정
+- `app/schemas/user.py`의 UserResponse에서 `id` 필드 제거
+- Firestore 기반 User 모델은 id를 사용하지 않음
