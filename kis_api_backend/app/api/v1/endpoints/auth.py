@@ -23,9 +23,22 @@ def signup(
     - **password**: 비밀번호 (최소 8자 권장)
     - **full_name**: 이름 (선택)
     """
-    auth_service = AuthService(db)
-    user = auth_service.create_user(user_data)
-    return user
+    try:
+        auth_service = AuthService(db)
+        user = auth_service.create_user(user_data)
+        return user
+    except HTTPException:
+        # HTTPException은 그대로 전달 (이메일 중복 등)
+        raise
+    except Exception as e:
+        # 예상치 못한 에러는 500으로 처리하고 로깅
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Signup failed for email {user_data.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"회원가입 처리 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 @router.post("/login", response_model=Token)
