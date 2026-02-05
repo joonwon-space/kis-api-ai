@@ -1,9 +1,6 @@
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -33,10 +30,4 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-try:
-    settings = Settings()
-    logger.info("Settings loaded successfully")
-    logger.info(f"ENCRYPTION_KEY is {'set' if settings.encryption_key else 'NOT set'}")
-except Exception as e:
-    logger.error(f"Failed to load settings: {e}", exc_info=True)
-    raise RuntimeError(f"설정 로딩 실패: ENCRYPTION_KEY 환경 변수를 확인해주세요. {str(e)}") from e
+settings = Settings()
