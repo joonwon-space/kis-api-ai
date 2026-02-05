@@ -1,4 +1,7 @@
-"""Firestore 클라이언트 초기화 및 관리"""
+"""Firestore 클라이언트 초기화 및 관리
+
+IAM 권한 업데이트 후 재배포 (2026-02-05)
+"""
 from google.cloud import firestore
 from typing import Optional
 import logging
