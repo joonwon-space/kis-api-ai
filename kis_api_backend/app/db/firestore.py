@@ -25,10 +25,11 @@ def get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
         try:
             project_id = "kis-ai-485303"
-            logger.info(f"Initializing Firestore client with project_id: {project_id}")
+            database_id = "kis-ai-db"
+            logger.info(f"Initializing Firestore client with project_id: {project_id}, database: {database_id}")
 
-            # Project ID만 지정, credential은 자동 탐지 (ADC)
-            _firestore_client = firestore.Client(project=project_id)
+            # Project ID와 Database ID 지정, credential은 자동 탐지 (ADC)
+            _firestore_client = firestore.Client(project=project_id, database=database_id)
             logger.info("Firestore client initialized successfully")
 
         except Exception as e:

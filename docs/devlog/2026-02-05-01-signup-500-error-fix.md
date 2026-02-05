@@ -167,3 +167,36 @@
 - [ ] Cloud Run 로그 확인
 - [ ] 회원가입 API 테스트
 - [ ] 에러 원인 파악 및 추가 수정 (필요 시)
+
+---
+
+## [작업 완료] 근본 원인 발견 및 해결
+
+### 배포 과정
+- [x] 첫 번째 배포 실패: Config 로딩 시 RuntimeError 발생으로 컨테이너 시작 실패
+- [x] Config 로직 복원 및 재배포
+- [x] 두 번째 배포 실패: Firestore connection test 타임아웃
+- [x] Connection test 제거 및 재배포
+- [x] 세 번째 배포 성공! ✅
+
+### 근본 원인 발견
+회원가입 API 테스트 결과:
+```
+404 The database (default) does not exist for project kis-ai-485303
+```
+
+**근본 원인**: Firestore 데이터베이스가 GCP 프로젝트에 생성되지 않았음
+
+### 해결 방법
+사용자가 `kis-ai-db`라는 이름으로 Firestore 데이터베이스 생성
+
+코드 수정:
+- `app/db/firestore.py`에서 데이터베이스 이름 지정: `database="kis-ai-db"`
+
+### 최종 변경 파일
+- `kis_api_backend/app/db/firestore.py` — 데이터베이스 이름 추가
+
+### 다음 단계
+- [ ] 배포 후 회원가입 API 재테스트
+- [ ] Firestore Console에서 users 컬렉션 확인
+- [ ] Issue #22 종료
