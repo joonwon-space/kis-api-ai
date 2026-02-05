@@ -216,3 +216,58 @@ fastapi.exceptions.ResponseValidationError: 1 validation error
 ### 최종 수정
 - `app/schemas/user.py`의 UserResponse에서 `id` 필드 제거
 - Firestore 기반 User 모델은 id를 사용하지 않음
+
+---
+
+## [작업 완료] Issue #22 해결 완료 ✅
+
+### 최종 테스트 성공
+```bash
+curl -X 'POST' 'https://kis-api-backend-cudfz6ybdq-du.a.run.app/api/v1/auth/signup' \
+  -d '{"email":"final-test@example.com","password":"testpass123","full_name":"Final Test"}'
+
+# Response: 201 Created
+{
+  "email": "final-test@example.com",
+  "full_name": "Final Test User",
+  "is_active": true,
+  "created_at": "2026-02-05T14:45:39.006022",
+  "auth_provider": "email"
+}
+```
+
+### 근본 원인 및 해결 과정
+
+1. **Firestore 데이터베이스 미생성**
+   - 해결: `kis-ai-db` 데이터베이스 생성
+
+2. **데이터베이스 이름 불일치**
+   - 코드는 `(default)` 데이터베이스를 찾았으나 `kis-ai-db`로 생성됨
+   - 해결: firestore.py에서 `database="kis-ai-db"` 추가
+
+3. **Firestore 라이브러리 버전 문제**
+   - 2.18.0에서 multi-database 지원 불확실
+   - 해결: 2.23.0으로 업데이트
+
+4. **IAM 권한 부족**
+   - Cloud Run Service Account에 Firestore 쓰기 권한 없음
+   - 해결: Cloud Datastore User 역할 추가
+
+5. **Response Validation 에러**
+   - UserResponse 스키마가 `id` 필드 요구
+   - Firestore에서는 email을 document ID로 사용하여 id 없음
+   - 해결: UserResponse에서 id 필드 제거
+
+### 총 변경 파일 (최종)
+- `kis_api_backend/app/db/firestore.py` — 데이터베이스 이름 지정, 로깅 개선
+- `kis_api_backend/app/api/v1/endpoints/auth.py` — 에러 핸들링 개선
+- `kis_api_backend/app/config.py` — Config 로딩 로직 복원
+- `kis_api_backend/app/schemas/user.py` — id 필드 제거
+- `kis_api_backend/requirements.txt` — Firestore 2.23.0 업데이트
+- `docs/devlog/2026-02-05-01-signup-500-error-fix.md` — 작업 기록
+
+### 완료 확인
+- ✅ 회원가입 API 정상 작동 (201 Created)
+- ✅ 이메일 중복 체크 작동
+- ✅ Firestore에 데이터 저장 확인
+- ✅ 배포 환경에서 안정적으로 작동
