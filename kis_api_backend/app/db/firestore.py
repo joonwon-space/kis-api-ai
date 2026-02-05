@@ -25,22 +25,15 @@ def get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
         try:
             project_id = "kis-ai-485303"
-            logger.info(f"Attempting to initialize Firestore client with project_id: {project_id}")
+            logger.info(f"Initializing Firestore client with project_id: {project_id}")
 
             # Project ID만 지정, credential은 자동 탐지 (ADC)
             _firestore_client = firestore.Client(project=project_id)
-
-            # Connection test: collections 메서드 호출
-            try:
-                list(_firestore_client.collections())
-                logger.info("Firestore client initialized successfully and connection verified")
-            except Exception as conn_err:
-                logger.error(f"Firestore connection test failed: {conn_err}", exc_info=True)
-                raise
+            logger.info("Firestore client initialized successfully")
 
         except Exception as e:
             logger.error(f"Failed to initialize Firestore client: {e}", exc_info=True)
-            raise RuntimeError(f"Firestore 초기화 실패: {str(e)}") from e
+            raise
 
     return _firestore_client
 
