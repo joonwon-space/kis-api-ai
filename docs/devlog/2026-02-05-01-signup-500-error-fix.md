@@ -132,6 +132,38 @@
 - 다운타임 최소화
 
 ### 다음 할 일
-1. 로깅 개선 코드 작성
-2. 사용자 승인 후 구현 시작
+1. 로깅 개선 코드 작성 ✅
+2. 사용자 승인 후 구현 시작 ✅
 3. 배포 및 검증
+
+---
+
+## [작업 진행] 에러 로깅 개선 완료
+
+### 완료된 작업
+- [x] Feature 브랜치 생성: `feature/issue-22-signup-500-error`
+- [x] Firestore 초기화 로깅 강화
+  - 프로젝트 ID 로그 출력
+  - Connection test 추가
+  - 상세 스택 트레이스 (`exc_info=True`)
+- [x] Config 로딩 로깅 추가
+  - ENCRYPTION_KEY 설정 확인
+  - 명확한 에러 메시지
+- [x] Auth signup 엔드포인트 에러 핸들링
+  - try-except 추가
+  - 상세 로깅
+- [x] 커밋 및 푸시
+- [x] PR 생성: #23
+
+### 변경된 파일
+- `kis_api_backend/app/db/firestore.py`
+- `kis_api_backend/app/config.py`
+- `kis_api_backend/app/api/v1/endpoints/auth.py`
+- `docs/devlog/2026-02-05-01-signup-500-error-fix.md`
+
+### 다음 단계
+- [ ] PR 머지
+- [ ] 자동 배포 대기 (GitHub Actions)
+- [ ] Cloud Run 로그 확인
+- [ ] 회원가입 API 테스트
+- [ ] 에러 원인 파악 및 추가 수정 (필요 시)
